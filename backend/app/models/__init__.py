@@ -1,0 +1,20 @@
+from app.models.user import User
+from app.models.team import Team
+from app.models.ticket import Ticket, TicketRequester
+from app.models.comment import TicketComment
+from app.models.sla import SLAEscalationLog
+from app.models.knowledge import KnowledgeArticle
+from app.models.feedback import DuplicateFeedbackLog
+from app.models.retraining import RetrainingLog
+
+__all__ = [
+    "User",
+    "Team",
+    "Ticket",
+    "TicketRequester",
+    "TicketComment",
+    "SLAEscalationLog",
+    "KnowledgeArticle",
+    "DuplicateFeedbackLog",
+    "RetrainingLog",
+]
