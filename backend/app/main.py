@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+from apscheduler.schedulers.background import BackgroundScheduler
 
 from app.database.database import engine, Base
 from app.auth.routes import router as auth_router
@@ -8,16 +9,26 @@ from app.tickets.routes import router as ticket_router
 from app.chatbot.routes import router as chatbot_router
 from app.agent.routes import router as agent_router
 from app.core.embeddings import get_shared_embedder
+from app.sla.service import audit_and_trigger_sla_escalations
+
+scheduler = BackgroundScheduler()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Pre-load single shared SentenceTransformer model at FastAPI startup
     print("[STARTUP] Pre-loading shared embedding model...")
     try:
         get_shared_embedder()
     except Exception as e:
         print(f"[STARTUP WARN] Shared embedder pre-load notice: {e}")
+
+    # Run SLA audit every 5 minutes automatically
+    scheduler.add_job(audit_and_trigger_sla_escalations, "interval", minutes=5, id="sla_audit")
+    scheduler.start()
+    print("[STARTUP] SLA background scheduler started — runs every 5 minutes.")
+
     yield
+
+    scheduler.shutdown(wait=False)
     print("[SHUTDOWN] Application shutdown complete.")
 
 # Create database tables if they do not exist

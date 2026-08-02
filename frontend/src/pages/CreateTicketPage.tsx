@@ -261,14 +261,9 @@ export default function CreateTicketPage() {
                     No duplicate ticket was created. You have been added as a linked requester on Ticket #{blockData.ticket.id} (Total linked users: {blockData.ticket.requester_count}).
                   </Typography>
                 </Alert>
-
                 <Paper sx={{ p: 2, bgcolor: theme.palette.mode === 'light' ? '#FEF3C7' : '#2A1B14', border: '1px solid #FDE68A', borderRadius: 2 }}>
-                  <Typography variant="caption" fontWeight={700} style={{ color: '#B45309' }}>
-                    SHARED MASTER TICKET #{blockData.ticket.id}:
-                  </Typography>
-                  <Typography variant="body2" fontWeight={700} style={{ marginTop: 4 }}>
-                    {blockData.ticket.title}
-                  </Typography>
+                  <Typography variant="caption" fontWeight={700} style={{ color: '#B45309' }}>SHARED MASTER TICKET #{blockData.ticket.id}:</Typography>
+                  <Typography variant="body2" fontWeight={700} style={{ marginTop: 4 }}>{blockData.ticket.title}</Typography>
                   <Typography variant="caption" style={{ color: theme.palette.text.secondary, display: 'block', marginTop: 4 }}>
                     Status: {blockData.ticket.status.toUpperCase()} | Assigned Team: {blockData.ticket.assigned_team}
                   </Typography>
@@ -276,38 +271,49 @@ export default function CreateTicketPage() {
               </Box>
             ) : (
               <Box>
-                <Alert severity="success" icon={<CheckCircleIcon fontSize="small" />} sx={{ mb: 2 }}>
-                  <Typography variant="subtitle2" fontWeight={800}>
-                    {blockData.message}
-                  </Typography>
-                  <Typography variant="caption" style={{ display: 'block', marginTop: 4 }}>
-                    No duplicate ticket was created. A verified fix for this exact issue is available below:
-                  </Typography>
-                </Alert>
+                {/* Resolved ticket — prominent banner */}
+                <Box sx={{ bgcolor: '#ECFDF5', border: '2px solid #10B981', borderRadius: 2, p: 2, mb: 2, display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+                  <CheckCircleIcon style={{ color: '#10B981', fontSize: 32, marginTop: 2 }} />
+                  <Box>
+                    <Typography variant="subtitle1" fontWeight={800} style={{ color: '#065F46' }}>
+                      This issue has already been resolved!
+                    </Typography>
+                    <Typography variant="body2" style={{ color: '#047857', marginTop: 2 }}>
+                      Ticket #{blockData.ticket.id} — <strong>{blockData.ticket.title}</strong>
+                    </Typography>
+                    <Typography variant="caption" style={{ color: '#6B7280', display: 'block', marginTop: 2 }}>
+                      No new ticket was created. The verified fix is shown below.
+                    </Typography>
+                  </Box>
+                </Box>
 
-                <Paper sx={{ p: 2, bgcolor: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: 2 }}>
-                  <Typography variant="caption" fontWeight={700} style={{ color: '#047857', display: 'block', marginBottom: 4 }}>
-                    VERIFIED RESOLUTION SUMMARY:
+                <Paper sx={{ p: 2.5, bgcolor: theme.palette.mode === 'light' ? '#F0FDF4' : '#052e16', border: '1px solid #A7F3D0', borderRadius: 2 }}>
+                  <Typography variant="overline" fontWeight={700} style={{ color: '#047857', letterSpacing: 1 }}>
+                    Verified Resolution
                   </Typography>
-                  <Typography variant="body2" fontWeight={600} style={{ color: '#047857', whiteSpace: 'pre-line' }}>
-                    {blockData.ticket.resolution_summary}
+                  <Typography variant="body1" style={{ color: theme.palette.mode === 'light' ? '#1E293B' : '#d1fae5', whiteSpace: 'pre-line', marginTop: 8, lineHeight: 1.7 }}>
+                    {blockData.ticket.resolution_summary || 'Resolution details are available from the support team.'}
                   </Typography>
 
                   {blockData.ticket.resolution_detail && (
-                    <Accordion sx={{ bgcolor: 'transparent', boxShadow: 'none', mt: 1 }}>
+                    <Accordion sx={{ bgcolor: 'transparent', boxShadow: 'none', mt: 1.5, border: '1px solid #A7F3D0', borderRadius: '8px !important' }}>
                       <AccordionSummary expandIcon={<ExpandMoreIcon fontSize="small" />}>
                         <Typography variant="caption" style={{ color: '#2563EB', fontWeight: 700 }}>
-                          View Technical Audit & Fix Steps
+                          View Technical Steps & Fix Details
                         </Typography>
                       </AccordionSummary>
                       <AccordionDetails>
-                        <Typography variant="caption" style={{ fontFamily: 'monospace', whiteSpace: 'pre-line', color: '#1E293B' }}>
+                        <Typography variant="caption" style={{ fontFamily: 'monospace', whiteSpace: 'pre-line', color: theme.palette.mode === 'light' ? '#1E293B' : '#d1fae5', lineHeight: 1.8 }}>
                           {blockData.ticket.resolution_detail}
                         </Typography>
                       </AccordionDetails>
                     </Accordion>
                   )}
                 </Paper>
+
+                <Typography variant="caption" style={{ color: '#9CA3AF', display: 'block', marginTop: 8, textAlign: 'center' }}>
+                  Resolved by: {blockData.ticket.assigned_team || 'Support Team'}
+                </Typography>
               </Box>
             )}
           </DialogContent>
