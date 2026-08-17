@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react'
-import { useNavigate, useOutletContext } from 'react-router-dom'
+import { useNavigate, useOutletContext, useSearchParams, useLocation } from 'react-router-dom'
 import {
   Box, Card, CardContent, Typography, TextField, Select, MenuItem,
   FormControl, InputLabel, Table, TableBody, TableCell, TableContainer,
@@ -15,7 +15,7 @@ import EmployeeTicketDetailsModal from '../components/EmployeeTicketDetailsModal
 
 const API_BASE = 'http://localhost:8000'
 
-type SortField = 'title' | 'status' | 'priority' | 'created_at' | 'predicted_team'
+type SortField = 'title' | 'status' | 'priority' | 'created_at' | 'predicted_team' | 'assigned_team'
 type SortDir = 'asc' | 'desc'
 
 export default function TicketsPage() {
@@ -23,6 +23,8 @@ export default function TicketsPage() {
   const theme = useTheme()
   const context = useOutletContext<{ currentRole?: string }>()
   const currentRole = context?.currentRole || 'employee'
+  const [searchParams, setSearchParams] = useSearchParams()
+  const location = useLocation()
 
   const [tickets, setTickets] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -38,6 +40,28 @@ export default function TicketsPage() {
   // Employee Modal state
   const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null)
   const [employeeModalOpen, setEmployeeModalOpen] = useState(false)
+
+  useEffect(() => {
+    const openParam = searchParams.get('open') || searchParams.get('id')
+    const stateTicketId = (location.state as any)?.openTicketId
+    const targetTicketId = openParam ? parseInt(openParam, 10) : (typeof stateTicketId === 'number' ? stateTicketId : (stateTicketId ? parseInt(stateTicketId, 10) : null))
+
+    if (targetTicketId && !isNaN(targetTicketId)) {
+      setSelectedTicketId(targetTicketId)
+      setEmployeeModalOpen(true)
+    }
+  }, [searchParams, location.state])
+
+  const handleModalClose = () => {
+    setEmployeeModalOpen(false)
+    setSelectedTicketId(null)
+    if (searchParams.has('open') || searchParams.has('id')) {
+      const newParams = new URLSearchParams(searchParams)
+      newParams.delete('open')
+      newParams.delete('id')
+      setSearchParams(newParams, { replace: true })
+    }
+  }
 
   const fetchTickets = async () => {
     try {
@@ -189,16 +213,18 @@ export default function TicketsPage() {
                       <SortCell field="status" label="Status" />
                       <SortCell field="priority" label="Priority" />
                       {!isEmployee && <TableCell>SLA Badge</TableCell>}
-                      {!isEmployee && <SortCell field="predicted_team" label="Team (ML)" />}
+                      {!isEmployee && <SortCell field="assigned_team" label="ASSIGNED TEAM" />}
                       <SortCell field="created_at" label="Created Date" />
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {paginated.map((t) => (
-                      <TableRow key={t.id} hover onClick={() => handleRowClick(t.id)} style={{ cursor: 'pointer' }}>
-                        <TableCell style={{ fontWeight: 700, color: '#2563EB' }}>
-                          #{t.id}
-                        </TableCell>
+                    {paginated.map((t, index) => {
+                      const displayId = isEmployee ? `#${page * rowsPerPage + index + 1}` : `#${t.id}`
+                      return (
+                        <TableRow key={t.id} hover onClick={() => handleRowClick(t.id)} style={{ cursor: 'pointer' }}>
+                          <TableCell style={{ fontWeight: 700, color: '#2563EB' }}>
+                            {displayId}
+                          </TableCell>
                         <TableCell>
                           <Typography variant="body2" fontWeight={600} style={{ color: theme.palette.text.primary }} noWrap sx={{ maxWidth: 340 }}>
                             {t.title}
@@ -215,14 +241,14 @@ export default function TicketsPage() {
                         {!isEmployee && <TableCell><SLABadge badge={t.sla_badge} /></TableCell>}
                         {!isEmployee && (
                           <TableCell>
-                            <Chip label={t.predicted_team || 'Triage'} size="small" style={{ backgroundColor: theme.palette.mode === 'light' ? '#EFF6FF' : '#1E293B', color: '#2563EB', fontWeight: 600 }} />
+                            <Chip label={t.assigned_team || t.predicted_team || 'Triage'} size="small" style={{ backgroundColor: theme.palette.mode === 'light' ? '#EFF6FF' : '#1E293B', color: '#2563EB', fontWeight: 600 }} />
                           </TableCell>
                         )}
                         <TableCell style={{ color: theme.palette.text.secondary }}>
                           {t.created_at ? new Date(t.created_at).toLocaleDateString() : '—'}
                         </TableCell>
                       </TableRow>
-                    ))}
+                    )})}
                     {paginated.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={isEmployee ? 6 : 8} align="center">
@@ -253,7 +279,7 @@ export default function TicketsPage() {
       <EmployeeTicketDetailsModal
         open={employeeModalOpen}
         ticketId={selectedTicketId}
-        onClose={() => setEmployeeModalOpen(false)}
+        onClose={handleModalClose}
         onRefreshList={fetchTickets}
       />
     </Box>

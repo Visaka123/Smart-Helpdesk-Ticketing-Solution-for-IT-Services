@@ -109,8 +109,15 @@ export default function DashboardPage() {
   const ACTIVE_STATUSES = ['new', 'open', 'assigned', 'in_progress', 'waiting_for_user', 'on_hold']
   const FINAL_STATUSES = ['resolved', 'closed', 'cancelled']
 
-  const activeTickets = tickets.filter((t) => ACTIVE_STATUSES.includes((t.status || 'open').toLowerCase()))
-  const resolvedTickets = tickets.filter((t) => FINAL_STATUSES.includes((t.status || 'open').toLowerCase()))
+  const userTickets = isEmployee
+    ? tickets.filter((t) => {
+        const req = (t.requester_name || '').toLowerCase()
+        return req.includes('alice') || req.includes('employee') || req === ''
+      })
+    : tickets
+
+  const activeTickets = userTickets.filter((t) => ACTIVE_STATUSES.includes((t.status || 'open').toLowerCase()))
+  const resolvedTickets = userTickets.filter((t) => FINAL_STATUSES.includes((t.status || 'open').toLowerCase()))
 
   const unassignedTickets = activeTickets.filter((t) => t.predicted_team === 'Unassigned/Triage')
   const breachedOrAtRisk = activeTickets.filter((t) => t.sla_badge === 'BREACHED' || t.sla_badge === 'AT_RISK')
@@ -148,7 +155,7 @@ export default function DashboardPage() {
             '&::-webkit-scrollbar-thumb': { backgroundColor: theme.palette.divider, borderRadius: 3 },
           }}
         >
-          {items.map((ticket) => (
+          {items.map((ticket, index) => (
             <Card
               key={ticket.id}
               sx={{
@@ -174,7 +181,7 @@ export default function DashboardPage() {
                 </Box>
 
                 <Typography variant="h6" fontWeight={700} noWrap title={ticket.title} style={{ color: theme.palette.text.primary, marginBottom: 4 }}>
-                  #{ticket.id} - {ticket.title}
+                  #{isEmployee ? index + 1 : ticket.id} - {ticket.title}
                 </Typography>
 
                 <Typography variant="body2" style={{ color: theme.palette.text.secondary, height: 38, overflow: 'hidden' }}>
@@ -214,7 +221,7 @@ export default function DashboardPage() {
           <Typography variant="body2" style={{ color: theme.palette.text.secondary }}>
             {isEmployee
               ? 'View your active support requests, track resolution progress, and access help guides'
-              : 'Executive Dashboard with Real-time ML Routing, Priority Engine & SLA Escalation Tracking'}
+              : 'Executive Dashboard with Real-time Automated Routing, Priority Engine & SLA Escalation Tracking'}
           </Typography>
         </Box>
 
@@ -298,7 +305,7 @@ export default function DashboardPage() {
         <Box>
           {!isEmployee && unassignedTickets.length > 0 &&
             renderHorizontalCardRow(
-              '⚠️ Unassigned / Low-Confidence Triage Queue',
+              '⚠️ Unassigned / Triage Queue',
               'Tickets requiring manual team assignment by support lead or manager',
               unassignedTickets,
               true
@@ -314,7 +321,7 @@ export default function DashboardPage() {
 
           {renderHorizontalCardRow(
             isEmployee ? '📋 My Open Support Requests' : '🔥 Active Open Tickets',
-            isEmployee ? 'Support requests currently being worked on by IT support specialists' : 'Active tickets classified & routed via SentenceTransformer embeddings',
+            isEmployee ? 'Support requests currently being worked on by IT support specialists' : 'Active support tickets queued for engineering & IT teams',
             activeTickets
           )}
 
@@ -333,7 +340,7 @@ export default function DashboardPage() {
                 <TableCell>Title</TableCell>
                 <TableCell>Priority</TableCell>
                 <TableCell>Category</TableCell>
-                {!isEmployee && <TableCell>Assigned Team (ML)</TableCell>}
+                {!isEmployee && <TableCell>Assigned Team</TableCell>}
                 <TableCell>Status</TableCell>
                 <TableCell>Created Date</TableCell>
               </TableRow>

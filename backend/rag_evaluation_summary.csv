@@ -1,0 +1,11 @@
+Metric,Current Value,Required Data,Calculation Method,Status
+Precision@3,26.67%,Benchmark query set & ground-truth document annotations,Retrieved Relevant Docs @ K / K,Calculated (via Ground-Truth Benchmark Set)
+Recall@3,55.00%,Total ground-truth relevant docs count per query,Retrieved Relevant Docs @ K / Total Relevant Docs,Calculated (via Ground-Truth Benchmark Set)
+MRR (Mean Reciprocal Rank),0.7000,Rank position of first relevant doc per query,Mean of (1 / Rank of first relevant doc),Calculated (via Ground-Truth Benchmark Set)
+NDCG@3,0.5613,Multi-grade relevance scores for query-doc pairs,DCG@K / Ideal DCG@K,Calculated (via Ground-Truth Benchmark Set)
+Hit Rate@3,80.00%,Binary relevance flags for top-K retrieved docs,% queries with >= 1 relevant doc in Top-K,Calculated (via Ground-Truth Benchmark Set)
+Retrieval Relevance (Top-1 Cosine Sim),63.86% (Score: 0.6386),Dense vector cosine similarity thresholding,Dot product of normalized query & doc embeddings,Calculated (Runtime Pipeline Data)
+Average Vector Search Latency,41.65 ms,FAISS Index search & embedding encoding timer,Mean elapsed time over vector search calls,Calculated (Runtime Pipeline Benchmark)
+End-to-End RAG Latency,5106.76 ms,Full API request-to-response elapsed timer,Mean elapsed time for complete RAG pipeline,Calculated (Runtime Pipeline Benchmark)
+Resolution Time Improvement,N/A (Pending Operational Data),Pre-RAG vs Post-RAG ticket resolution timestamps,(MTTR_baseline - MTTR_RAG) / MTTR_baseline * 100%,Unavailable (No Historical Resolved Ticket Data)
+First-Time-Right (FTR) Rate,N/A (Pending Operational Data),Chatbot deflection telemetry & user feedback logs,(Resolved RAG Sessions / Total Sessions) * 100%,Unavailable (Zero Feedback Telemetry Logged)

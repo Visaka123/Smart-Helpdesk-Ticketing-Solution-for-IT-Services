@@ -1,0 +1,196 @@
+{
+  "aggregate_metrics": {
+    "precision_at_3": 0.2667,
+    "recall_at_3": 0.55,
+    "mrr": 0.7,
+    "ndcg_at_3": 0.5613,
+    "hit_rate_at_3": 0.8,
+    "avg_top1_cosine_sim": 0.6386,
+    "vector_search_latency_ms": 41.65,
+    "end_to_end_rag_latency_ms": 5106.76
+  },
+  "detailed_query_results": [
+    {
+      "query_id": "Q01",
+      "query_text": "Cisco AnyConnect VPN connection fails with posture check error",
+      "top1_similarity": 0.7979,
+      "hits_at_k": 1,
+      "precision_at_k": 0.3333,
+      "recall_at_k": 0.5,
+      "mrr": 1.0,
+      "ndcg_at_k": 0.6131,
+      "hit_rate": 1.0
+    },
+    {
+      "query_id": "Q02",
+      "query_text": "FATAL: too many connections error on PostgreSQL database cluster",
+      "top1_similarity": 0.434,
+      "hits_at_k": 1,
+      "precision_at_k": 0.3333,
+      "recall_at_k": 0.5,
+      "mrr": 0.5,
+      "ndcg_at_k": 0.1738,
+      "hit_rate": 1.0
+    },
+    {
+      "query_id": "Q03",
+      "query_text": "SAP GUI authorization check failed on transaction code ME21N error SU53",
+      "top1_similarity": 0.8318,
+      "hits_at_k": 1,
+      "precision_at_k": 0.3333,
+      "recall_at_k": 0.5,
+      "mrr": 0.5,
+      "ndcg_at_k": 0.3869,
+      "hit_rate": 1.0
+    },
+    {
+      "query_id": "Q04",
+      "query_text": "Windows 11 Blue Screen BSOD kernel security check failure crash",
+      "top1_similarity": 0.2954,
+      "hits_at_k": 0,
+      "precision_at_k": 0.0,
+      "recall_at_k": 0.0,
+      "mrr": 0.0,
+      "ndcg_at_k": 0.0,
+      "hit_rate": 0.0
+    },
+    {
+      "query_id": "Q05",
+      "query_text": "Corporate access control and data security handling compliance policy",
+      "top1_similarity": 0.3493,
+      "hits_at_k": 0,
+      "precision_at_k": 0.0,
+      "recall_at_k": 0.0,
+      "mrr": 0.0,
+      "ndcg_at_k": 0.0,
+      "hit_rate": 0.0
+    },
+    {
+      "query_id": "Q06",
+      "query_text": "Microsoft Teams desktop app crashing constantly on startup clearing appdata cache",
+      "top1_similarity": 0.7563,
+      "hits_at_k": 1,
+      "precision_at_k": 0.3333,
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_k": 1.0,
+      "hit_rate": 1.0
+    },
+    {
+      "query_id": "Q07",
+      "query_text": "Department HP LaserJet printer paper jam and offline status service restart",
+      "top1_similarity": 0.8691,
+      "hits_at_k": 1,
+      "precision_at_k": 0.3333,
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_k": 1.0,
+      "hit_rate": 1.0
+    },
+    {
+      "query_id": "Q08",
+      "query_text": "Active Directory account locked out self service password reset Okta MFA",
+      "top1_similarity": 0.7946,
+      "hits_at_k": 1,
+      "precision_at_k": 0.3333,
+      "recall_at_k": 0.5,
+      "mrr": 1.0,
+      "ndcg_at_k": 0.8262,
+      "hit_rate": 1.0
+    },
+    {
+      "query_id": "Q09",
+      "query_text": "Failed corporate credit card invoice charge double billing reconciliation",
+      "top1_similarity": 0.6087,
+      "hits_at_k": 1,
+      "precision_at_k": 0.3333,
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_k": 1.0,
+      "hit_rate": 1.0
+    },
+    {
+      "query_id": "Q10",
+      "query_text": "Database pool connections exhausted connection pool scaling secondary node failover",
+      "top1_similarity": 0.6489,
+      "hits_at_k": 1,
+      "precision_at_k": 0.3333,
+      "recall_at_k": 0.5,
+      "mrr": 1.0,
+      "ndcg_at_k": 0.6131,
+      "hit_rate": 1.0
+    }
+  ],
+  "metrics_summary_table": [
+    {
+      "Metric": "Precision@3",
+      "Current Value": "26.67%",
+      "Required Data": "Benchmark query set & ground-truth document annotations",
+      "Calculation Method": "Retrieved Relevant Docs @ K / K",
+      "Status": "Calculated (via Ground-Truth Benchmark Set)"
+    },
+    {
+      "Metric": "Recall@3",
+      "Current Value": "55.00%",
+      "Required Data": "Total ground-truth relevant docs count per query",
+      "Calculation Method": "Retrieved Relevant Docs @ K / Total Relevant Docs",
+      "Status": "Calculated (via Ground-Truth Benchmark Set)"
+    },
+    {
+      "Metric": "MRR (Mean Reciprocal Rank)",
+      "Current Value": "0.7000",
+      "Required Data": "Rank position of first relevant doc per query",
+      "Calculation Method": "Mean of (1 / Rank of first relevant doc)",
+      "Status": "Calculated (via Ground-Truth Benchmark Set)"
+    },
+    {
+      "Metric": "NDCG@3",
+      "Current Value": "0.5613",
+      "Required Data": "Multi-grade relevance scores for query-doc pairs",
+      "Calculation Method": "DCG@K / Ideal DCG@K",
+      "Status": "Calculated (via Ground-Truth Benchmark Set)"
+    },
+    {
+      "Metric": "Hit Rate@3",
+      "Current Value": "80.00%",
+      "Required Data": "Binary relevance flags for top-K retrieved docs",
+      "Calculation Method": "% queries with >= 1 relevant doc in Top-K",
+      "Status": "Calculated (via Ground-Truth Benchmark Set)"
+    },
+    {
+      "Metric": "Retrieval Relevance (Top-1 Cosine Sim)",
+      "Current Value": "63.86% (Score: 0.6386)",
+      "Required Data": "Dense vector cosine similarity thresholding",
+      "Calculation Method": "Dot product of normalized query & doc embeddings",
+      "Status": "Calculated (Runtime Pipeline Data)"
+    },
+    {
+      "Metric": "Average Vector Search Latency",
+      "Current Value": "41.65 ms",
+      "Required Data": "FAISS Index search & embedding encoding timer",
+      "Calculation Method": "Mean elapsed time over vector search calls",
+      "Status": "Calculated (Runtime Pipeline Benchmark)"
+    },
+    {
+      "Metric": "End-to-End RAG Latency",
+      "Current Value": "5106.76 ms",
+      "Required Data": "Full API request-to-response elapsed timer",
+      "Calculation Method": "Mean elapsed time for complete RAG pipeline",
+      "Status": "Calculated (Runtime Pipeline Benchmark)"
+    },
+    {
+      "Metric": "Resolution Time Improvement",
+      "Current Value": "N/A (Pending Operational Data)",
+      "Required Data": "Pre-RAG vs Post-RAG ticket resolution timestamps",
+      "Calculation Method": "(MTTR_baseline - MTTR_RAG) / MTTR_baseline * 100%",
+      "Status": "Unavailable (No Historical Resolved Ticket Data)"
+    },
+    {
+      "Metric": "First-Time-Right (FTR) Rate",
+      "Current Value": "N/A (Pending Operational Data)",
+      "Required Data": "Chatbot deflection telemetry & user feedback logs",
+      "Calculation Method": "(Resolved RAG Sessions / Total Sessions) * 100%",
+      "Status": "Unavailable (Zero Feedback Telemetry Logged)"
+    }
+  ]
+}

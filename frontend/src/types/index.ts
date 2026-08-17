@@ -13,17 +13,20 @@ export interface AuthState {
 }
 
 export interface Ticket {
-  id: string
+  id: any
   title: string
   description: string
   status: string
   priority: string
-  predicted_team: string
-  predicted_priority: string
-  ai_routed: boolean
-  kb_match: boolean
+  category?: string
+  assigned_team?: string
+  predicted_team?: string
+  predicted_priority?: string
+  sla_hours?: number
+  ai_routed?: boolean
+  kb_match?: boolean
   created_at: string
-  updated_at: string
+  updated_at?: string
 }
 
 export interface TicketStats {
@@ -39,21 +42,40 @@ export interface TicketStats {
   recent_tickets: Ticket[]
 }
 
+export interface SourceItem {
+  id: number
+  title: string
+  document_type: string
+  source_type?: 'internal_kb' | 'external_web'
+  category: string
+  snippet: string
+  source_file: string
+  download_url: string
+  domain?: string
+  relevance_pct?: number
+  similarity_score?: number
+  relevance_label?: string
+}
+
 export interface ChatMessage {
   id: string
   role: 'user' | 'assistant'
   content: string
   timestamp: Date
+  sources?: SourceItem[]
   similar_tickets?: Ticket[]
   confidence?: number
   suggested_actions?: string[]
+  error?: boolean
 }
 
 export interface ChatbotResponse {
   answer: string
+  sources?: SourceItem[]
   similar_tickets: Ticket[]
   confidence?: number
   suggested_actions?: string[]
+  error?: boolean
 }
 
 export interface CreateTicketPayload {

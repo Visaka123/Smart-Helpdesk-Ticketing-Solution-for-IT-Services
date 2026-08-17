@@ -1,0 +1,96 @@
+{
+  "dataset_metadata": {
+    "title": "Smart Helpdesk Enterprise RAG Benchmark Dataset",
+    "version": "1.0",
+    "description": "Ground-truth benchmark query-document relevance annotations for evaluating RAG retrieval module.",
+    "total_queries": 10,
+    "k_value": 3
+  },
+  "queries": [
+    {
+      "query_id": "Q01",
+      "query_text": "Cisco AnyConnect VPN connection fails with posture check error",
+      "category": "Networking",
+      "relevant_docs": [
+        {"doc_id": 4, "doc_title": "Cisco AnyConnect Remote VPN Setup & Troubleshooting SOP", "relevance_grade": 2},
+        {"doc_id": 102, "doc_title": "Corporate Cisco AnyConnect Remote VPN Setup & Troubleshooting Guide", "relevance_grade": 2}
+      ]
+    },
+    {
+      "query_id": "Q02",
+      "query_text": "FATAL: too many connections error on PostgreSQL database cluster",
+      "category": "Database Team",
+      "relevant_docs": [
+        {"doc_id": 1, "doc_title": "Database Connection Error Troubleshooting SOP", "relevance_grade": 2},
+        {"doc_id": 103, "doc_title": "MySQL Production Database Cluster Failover & Recovery SOP", "relevance_grade": 1}
+      ]
+    },
+    {
+      "query_id": "Q03",
+      "query_text": "SAP GUI authorization check failed on transaction code ME21N error SU53",
+      "category": "SAP Support",
+      "relevant_docs": [
+        {"doc_id": 2, "doc_title": "SAP GUI Login and Password Reset SOP", "relevance_grade": 2},
+        {"doc_id": 101, "doc_title": "SAP Transaction SU53 Authorization & GRC Role Request SOP", "relevance_grade": 2}
+      ]
+    },
+    {
+      "query_id": "Q04",
+      "query_text": "Windows 11 Blue Screen BSOD kernel security check failure crash",
+      "category": "IT Support",
+      "relevant_docs": [
+        {"doc_id": 5, "doc_title": "Windows 11 Blue Screen (BSOD) & Crash Recovery SOP", "relevance_grade": 2}
+      ]
+    },
+    {
+      "query_id": "Q05",
+      "query_text": "Corporate access control and data security handling compliance policy",
+      "category": "Security",
+      "relevant_docs": [
+        {"doc_id": 3, "doc_title": "Corporate Security Policy: Access Control & Data Handling", "relevance_grade": 2}
+      ]
+    },
+    {
+      "query_id": "Q06",
+      "query_text": "Microsoft Teams desktop app crashing constantly on startup clearing appdata cache",
+      "category": "IT Support",
+      "relevant_docs": [
+        {"doc_id": 100, "doc_title": "Microsoft Teams & Office 365 Client Crash & Performance Recovery SOP", "relevance_grade": 2}
+      ]
+    },
+    {
+      "query_id": "Q07",
+      "query_text": "Department HP LaserJet printer paper jam and offline status service restart",
+      "category": "IT Support",
+      "relevant_docs": [
+        {"doc_id": 104, "doc_title": "Office Printer Offline & Paper Jam Self-Service Guide", "relevance_grade": 2}
+      ]
+    },
+    {
+      "query_id": "Q08",
+      "query_text": "Active Directory account locked out self service password reset Okta MFA",
+      "category": "IT Support",
+      "relevant_docs": [
+        {"doc_id": 2, "doc_title": "SAP GUI Login and Password Reset SOP", "relevance_grade": 1},
+        {"doc_id": 106, "doc_title": "Corporate Active Directory Password Reset & Okta MFA SOP", "relevance_grade": 2}
+      ]
+    },
+    {
+      "query_id": "Q09",
+      "query_text": "Failed corporate credit card invoice charge double billing reconciliation",
+      "category": "Billing & Payments",
+      "relevant_docs": [
+        {"doc_id": 105, "doc_title": "Enterprise Invoice Payment & Credit Card Expense Policy", "relevance_grade": 2}
+      ]
+    },
+    {
+      "query_id": "Q10",
+      "query_text": "Database pool connections exhausted connection pool scaling secondary node failover",
+      "category": "Database Team",
+      "relevant_docs": [
+        {"doc_id": 1, "doc_title": "Database Connection Error Troubleshooting SOP", "relevance_grade": 2},
+        {"doc_id": 103, "doc_title": "MySQL Production Database Cluster Failover & Recovery SOP", "relevance_grade": 2}
+      ]
+    }
+  ]
+}

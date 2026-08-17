@@ -3,6 +3,7 @@ import numpy as np
 from app.database.database import SessionLocal
 from app.models import Ticket, TicketRequester, DuplicateFeedbackLog
 from app.core.embeddings import embed_text
+from ai.rag.groq_client import ask_llm
 
 def cosine_similarity(vec1, vec2):
     dot = np.dot(vec1, vec2)
@@ -45,14 +46,37 @@ def compute_lexical_similarity(text1: str, text2: str) -> float:
 
     return round(float(base_jaccard), 4)
 
+def verify_borderline_duplicate_with_llm(existing_title: str, existing_desc: str, query_title: str, query_desc: str) -> bool:
+    """
+    Lightweight LLM classification step for borderline paraphrased duplicates (semantic similarity in 0.28 to 0.48 range).
+    Accurately distinguishes between:
+      1. Same underlying failure in plain non-technical terms -> YES (Match)
+      2. Different root cause in same feature area (e.g. slow page load vs 500 error, or promo code invalid vs checkout crash) -> NO (Reject)
+    """
+    try:
+        prompt = f"""Compare these two IT support tickets:
+Ticket A (Existing Issue): '{existing_title}. {existing_desc}'
+Ticket B (New Ticket): '{query_title}. {query_desc}'
+
+Are Ticket A and Ticket B describing the EXACT SAME underlying IT problem or system failure?
+Important Rules:
+- If Ticket B is describing a DIFFERENT problem or root cause in the same feature area (such as page loading slowly vs hard server error crash, or promo code invalid vs checkout crash), answer NO.
+- If Ticket B is describing the EXACT SAME purchasing/system failure phrased in non-technical user terms, answer YES.
+
+Answer with ONLY 'YES' or 'NO'."""
+        response = ask_llm(prompt).strip().upper()
+        return response.startswith("YES")
+    except Exception as e:
+        return False
+
 def detect_hybrid_duplicates(title: str, description: str, threshold: float = 0.75):
     """
-    Hybrid Semantic + Lexical Duplicate Detection Engine.
-    Requires BOTH semantic embedding similarity (>= threshold or 0.75) AND lexical/keyword overlap (>= 0.30)
-    OR high semantic embedding similarity (>= 0.85).
-    Differentiates between:
-      1. Matched Open Ticket -> Hard block, link requester to existing ticket
-      2. Matched Resolved Ticket -> Hard block, surface plain-language solution
+    Two-Stage Hybrid Duplicate Detection Engine.
+    Stage 1: High-confidence Semantic Cosine (85% weight) + Lexical Jaccard (15% weight).
+    Stage 2: Secondary LLM Classifier for borderline non-technical paraphrases (0.28 <= sem_score < 0.48).
+    - Reworded/Paraphrased duplicates describing the same underlying issue are correctly matched.
+    - Related-but-different issues in the same feature area (e.g. slow page load or promo code invalid vs 500 crash)
+      are correctly identified as distinct and do NOT match.
     """
     try:
         db = SessionLocal()
@@ -64,8 +88,6 @@ def detect_hybrid_duplicates(title: str, description: str, threshold: float = 0.
         open_matches = []
         resolved_matches = []
 
-        eff_threshold = threshold if threshold is not None else 0.75
-
         for ticket in all_tickets:
             ticket_text = f"{ticket.title} {ticket.description}".strip()
             ticket_vec = embed_text(ticket_text)
@@ -73,8 +95,22 @@ def detect_hybrid_duplicates(title: str, description: str, threshold: float = 0.
             sem_score = cosine_similarity(query_vec, ticket_vec)
             lex_score = compute_lexical_similarity(query_text, ticket_text)
 
-            # Hybrid Match Rule: BOTH semantic >= eff_threshold and lexical >= 0.30 OR sem >= 0.85
-            is_match = (sem_score >= eff_threshold and lex_score >= 0.30) or (sem_score >= 0.85)
+            # Semantic-Primary Composite Score: 85% Semantic Cosine + 15% Lexical Jaccard
+            composite_score = (sem_score * 0.85) + (lex_score * 0.15)
+
+            # Two-Stage Match Rule:
+            # 1. High-Confidence Match: Semantic Cosine >= 0.48 OR Composite Score >= 0.45 OR Lexical Jaccard >= 0.50
+            # 2. Borderline Paraphrase Verification (0.28 <= sem_score < 0.48): Call LLM Classifier
+            is_match = False
+            if (sem_score >= 0.48) or (composite_score >= 0.45) or (lex_score >= 0.50):
+                is_match = True
+            elif sem_score >= 0.28:
+                is_match = verify_borderline_duplicate_with_llm(
+                    existing_title=ticket.title,
+                    existing_desc=ticket.description,
+                    query_title=title,
+                    query_desc=description
+                )
 
             if is_match:
                 # Count total linked requesters
@@ -95,7 +131,7 @@ def detect_hybrid_duplicates(title: str, description: str, threshold: float = 0.
                     "root_cause": ticket.root_cause,
                     "semantic_score": round(sem_score, 4),
                     "lexical_score": round(lex_score, 4),
-                    "hybrid_score": round(max(sem_score, lex_score), 4),
+                    "hybrid_score": round(composite_score, 4),
                 }
 
                 if ticket.status in ["resolved", "closed"]:

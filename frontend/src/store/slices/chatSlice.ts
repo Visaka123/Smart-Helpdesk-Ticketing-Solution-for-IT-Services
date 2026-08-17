@@ -42,6 +42,10 @@ const chatSlice = createSlice({
         timestamp: new Date(),
       })
     },
+    setMessages(state, action: PayloadAction<ChatMessage[]>) {
+      state.messages = action.payload
+      state.error = null
+    },
     clearConversation(state) {
       state.messages = []
       state.error = null
@@ -55,19 +59,29 @@ const chatSlice = createSlice({
         state.messages.push({
           id: genId(),
           role: 'assistant',
-          content: action.payload.answer,
+          content: action.payload.answer || 'Unable to search the knowledge base. Please try again.',
           timestamp: new Date(),
+          sources: action.payload.sources || [],
           similar_tickets: action.payload.similar_tickets,
           confidence: action.payload.confidence,
           suggested_actions: action.payload.suggested_actions,
+          error: action.payload.error,
         })
       })
       .addCase(sendMessage.rejected, (state, action) => {
         state.loading = false
         state.error = action.payload as string
+        state.messages.push({
+          id: genId(),
+          role: 'assistant',
+          content: 'Unable to search the knowledge base. Please try again.',
+          timestamp: new Date(),
+          sources: [],
+          error: true,
+        })
       })
   },
 })
 
-export const { addUserMessage, clearConversation } = chatSlice.actions
+export const { addUserMessage, setMessages, clearConversation } = chatSlice.actions
 export default chatSlice.reducer

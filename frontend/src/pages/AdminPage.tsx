@@ -178,7 +178,7 @@ export default function AdminPage() {
                             <Typography variant="body2" fontWeight={500} noWrap sx={{ maxWidth: 280 }}>{t.title}</Typography>
                           </TableCell>
                           <TableCell><StatusBadge status={t.status} /></TableCell>
-                          <TableCell><PriorityBadge priority={t.priority || t.predicted_priority} /></TableCell>
+                          <TableCell><PriorityBadge priority={t.priority || t.predicted_priority || 'Medium'} /></TableCell>
                           <TableCell>
                             <Typography variant="body2" color="text.secondary">{t.predicted_team || '—'}</Typography>
                           </TableCell>

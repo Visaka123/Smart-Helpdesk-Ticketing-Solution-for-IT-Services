@@ -13,8 +13,13 @@ from app.duplicate.service import detect_hybrid_duplicates
 
 router = APIRouter()
 
+class ChatMessageItem(BaseModel):
+    role: str
+    content: str
+
 class ChatRequest(BaseModel):
-    message: str
+    message: Optional[str] = None
+    messages: Optional[List[ChatMessageItem]] = None
 
 class RecommendationRequest(BaseModel):
     title: str
@@ -32,10 +37,17 @@ def ask_chatbot_endpoint(req: ChatRequest):
     Never throws HTTP 500 error and never returns 'I couldn't find an exact match'.
     """
     try:
-        rag_res = RAG_chatbot_query(req.message)
+        user_msg = req.message
+        if not user_msg and req.messages and len(req.messages) > 0:
+            user_msg = req.messages[-1].content
+
+        user_msg = user_msg or "IT Support Inquiry"
+        msg_history = [{"role": m.role, "content": m.content} for m in req.messages] if req.messages else None
+
+        rag_res = RAG_chatbot_query(user_msg, messages=msg_history)
         matched_t = []
         try:
-            dup_res = detect_hybrid_duplicates(req.message, req.message, threshold=0.75)
+            dup_res = detect_hybrid_duplicates(user_msg, user_msg, threshold=0.75)
             matched_t = dup_res.get("matched_tickets", [])
         except Exception as dup_err:
             print(f"[WARN] Duplicate check error in chatbot endpoint: {dup_err}")
@@ -45,31 +57,18 @@ def ask_chatbot_endpoint(req: ChatRequest):
             "sources": rag_res.get("sources", []),
             "confidence": rag_res.get("confidence", 0.0),
             "can_escalate": rag_res.get("can_escalate", True),
+            "auto_create_ticket": rag_res.get("auto_create_ticket", False),
             "similar_tickets": matched_t,
         }
     except Exception as e:
         print(f"[ERROR] Chatbot API Exception caught: {e}")
-        fallback_sources = [
-            {
-                "id": doc["id"],
-                "title": doc["title"],
-                "document_type": doc["document_type"],
-                "category": doc["category"],
-                "snippet": doc["snippet"],
-                "source_file": doc["source_file"],
-                "download_url": doc["download_url"],
-                "relevance_pct": 75.0,
-                "similarity_score": 0.75,
-            }
-            for doc in ENTERPRISE_DOCS[:3]
-        ]
-        fallback_ans = generate_fallback_answer(req.message, fallback_sources, 0.30)
         return {
-            "answer": fallback_ans,
-            "sources": fallback_sources,
-            "confidence": 0.30,
+            "answer": "Unable to search the knowledge base. Please try again.",
+            "sources": [],
+            "confidence": 0.0,
             "can_escalate": True,
             "similar_tickets": [],
+            "error": True,
         }
 
 @router.post("/recommendations")

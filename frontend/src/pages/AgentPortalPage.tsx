@@ -38,6 +38,8 @@ import axios from 'axios'
 import { PriorityBadge, SLABadge, StatusBadge } from '../components/ui/SemanticBadges'
 import { ITSMTimeline } from '../components/ui/ITSMTimeline'
 import { KnowledgeRecommendationPanel } from '../components/ui/KnowledgeRecommendationPanel'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 const API_BASE = 'http://localhost:8000'
 
@@ -51,6 +53,7 @@ export default function AgentPortalPage() {
   const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null)
   const [ticketDetail, setTicketDetail] = useState<any>(null)
   const [recommendations, setRecommendations] = useState<any[]>([])
+  const [loadingRecommendations, setLoadingRecommendations] = useState(false)
   const [detailOpen, setDetailOpen] = useState(false)
 
   // Agent Workspace UI state
@@ -105,54 +108,80 @@ export default function AgentPortalPage() {
     fetchAgentQueue()
   }, [])
 
-  const openTicketDetail = async (id: number) => {
+  const openTicketDetail = (id: number) => {
     setSelectedTicketId(id)
     setShowResolveForm(false)
-    try {
-      const token = localStorage.getItem('token')
-      const storedUser = localStorage.getItem('user')
-      const headers: any = {}
-      if (token) headers['Authorization'] = `Bearer ${token}`
-      if (storedUser) {
-        try {
-          const u = JSON.parse(storedUser)
-          headers['X-User-Id'] = String(u.id)
-          headers['X-User-Role'] = 'agent'
-          headers['X-User-Email'] = u.email
-        } catch (e) {}
-      } else {
-        headers['X-User-Role'] = 'agent'
-      }
+    setRecommendations([])
 
-      const res = await axios.get(`${API_BASE}/agent/detail/${id}`, { headers })
-      setTicketDetail(res.data)
-      setCurrentPriority(res.data.priority || 'Medium')
-      setCurrentStatus(res.data.status || 'open')
-      setCurrentTeam(res.data.assigned_team || 'Unassigned/Triage')
-      setAssignedEngineer(res.data.assigned_agent_name || 'Sarah Agent')
-      setResolutionSummary(res.data.resolution_summary || '')
-      setResolutionDetail(res.data.resolution_detail || '')
-      setRootCause(res.data.root_cause || 'User Error')
-      setDetailOpen(true)
-
-      if (res.data.status === 'resolved' || res.data.status === 'closed') {
+    // 1. INSTANT MODAL OPEN (0ms blocking delay) using queue ticket data if available
+    const existingInQueue = tickets.find((t) => t.id === id)
+    if (existingInQueue) {
+      setTicketDetail(existingInQueue)
+      setCurrentPriority(existingInQueue.priority || 'Medium')
+      setCurrentStatus(existingInQueue.status || 'open')
+      setCurrentTeam(existingInQueue.assigned_team || 'Unassigned/Triage')
+      setAssignedEngineer(existingInQueue.assigned_agent_name || 'Sarah Agent')
+      setResolutionSummary(existingInQueue.resolution_summary || '')
+      setResolutionDetail(existingInQueue.resolution_detail || '')
+      setRootCause(existingInQueue.root_cause || 'User Error')
+      if (existingInQueue.status === 'resolved' || existingInQueue.status === 'closed') {
         setShowResolveForm(true)
       }
-
-      // Fetch proactive KB & SOP recommendations
-      try {
-        const recRes = await axios.post(`${API_BASE}/chatbot/recommendations`, {
-          title: res.data.title,
-          description: res.data.description,
-        })
-        setRecommendations(recRes.data.recommended_articles || [])
-      } catch (err) {
-        console.error('Error fetching recommendations:', err)
-        setRecommendations([])
-      }
-    } catch (e) {
-      console.error(e)
     }
+    setDetailOpen(true) // Open modal shell IMMEDIATELY!
+
+    // 2. NON-BLOCKING ASYNC BACKGROUND DATA FETCHING
+    const token = localStorage.getItem('token')
+    const storedUser = localStorage.getItem('user')
+    const headers: any = {}
+    if (token) headers['Authorization'] = `Bearer ${token}`
+    if (storedUser) {
+      try {
+        const u = JSON.parse(storedUser)
+        headers['X-User-Id'] = String(u.id)
+        headers['X-User-Role'] = 'agent'
+        headers['X-User-Email'] = u.email
+      } catch (e) {}
+    } else {
+      headers['X-User-Role'] = 'agent'
+    }
+
+    axios
+      .get(`${API_BASE}/agent/detail/${id}`, { headers })
+      .then((res) => {
+        setTicketDetail(res.data)
+        setCurrentPriority(res.data.priority || 'Medium')
+        setCurrentStatus(res.data.status || 'open')
+        setCurrentTeam(res.data.assigned_team || 'Unassigned/Triage')
+        setAssignedEngineer(res.data.assigned_agent_name || 'Sarah Agent')
+        setResolutionSummary(res.data.resolution_summary || '')
+        setResolutionDetail(res.data.resolution_detail || '')
+        setRootCause(res.data.root_cause || 'User Error')
+        if (res.data.status === 'resolved' || res.data.status === 'closed') {
+          setShowResolveForm(true)
+        }
+
+        // Stream recommendations asynchronously in background
+        setLoadingRecommendations(true)
+        axios
+          .post(`${API_BASE}/chatbot/recommendations`, {
+            title: res.data.title,
+            description: res.data.description,
+          })
+          .then((recRes) => {
+            setRecommendations(recRes.data.recommended_articles || [])
+          })
+          .catch((err) => {
+            console.error('Error fetching recommendations:', err)
+            setRecommendations([])
+          })
+          .finally(() => {
+            setLoadingRecommendations(false)
+          })
+      })
+      .catch((e) => {
+        console.error('Error loading ticket detail:', e)
+      })
   }
 
   const [submittingComment, setSubmittingComment] = useState(false)
@@ -390,17 +419,22 @@ export default function AgentPortalPage() {
                     <TableCell>
                       <Select
                         size="small"
-                        value={t.assigned_team || 'Unassigned/Triage'}
+                        value={t.assigned_team || 'General Support'}
                         onChange={(e) => handleInlineAssignTeam(t.id, e.target.value)}
-                        sx={{ fontSize: '0.78rem', height: 32, minWidth: 150 }}
+                        sx={{ fontSize: '0.78rem', height: 32, minWidth: 180 }}
                       >
                         <MenuItem value="Unassigned/Triage">⚠️ Unassigned/Triage</MenuItem>
-                        <MenuItem value="IT Support">IT Support</MenuItem>
-                        <MenuItem value="Network Team">Network Team</MenuItem>
-                        <MenuItem value="Database Team">Database Team</MenuItem>
-                        <MenuItem value="Security Team">Security Team</MenuItem>
-                        <MenuItem value="SAP Team">SAP Team</MenuItem>
-                        <MenuItem value="HR Support">HR Support</MenuItem>
+                        <MenuItem value="Application Support">Application Support</MenuItem>
+                        <MenuItem value="Database Operations">Database Operations</MenuItem>
+                        <MenuItem value="DevOps & Cloud Infra">DevOps & Cloud Infra</MenuItem>
+                        <MenuItem value="Network & Security">Network & Security</MenuItem>
+                        <MenuItem value="SAP / ERP Team">SAP / ERP Team</MenuItem>
+                        <MenuItem value="Identity & Access Management">Identity & Access Management</MenuItem>
+                        <MenuItem value="IT Admin">IT Admin</MenuItem>
+                        <MenuItem value="Desktop Support">Desktop Support</MenuItem>
+                        <MenuItem value="Procurement">Procurement</MenuItem>
+                        <MenuItem value="HR Operations">HR Operations</MenuItem>
+                        <MenuItem value="General Support">General Support</MenuItem>
                       </Select>
                     </TableCell>
                     <TableCell>
@@ -501,14 +535,19 @@ export default function AgentPortalPage() {
                 <Grid item xs={12} sm={3}>
                   <FormControl fullWidth size="small" disabled={isClosed}>
                     <InputLabel>Team Assignment</InputLabel>
-                    <Select value={currentTeam} label="Team Assignment" onChange={(e) => handleInlineAssignTeam(ticketDetail.id, e.target.value)}>
+                    <Select value={currentTeam || 'General Support'} label="Team Assignment" onChange={(e) => handleInlineAssignTeam(ticketDetail.id, e.target.value)}>
                       <MenuItem value="Unassigned/Triage">⚠️ Unassigned/Triage</MenuItem>
-                      <MenuItem value="IT Support">IT Support</MenuItem>
-                      <MenuItem value="Network Team">Network Team</MenuItem>
-                      <MenuItem value="Database Team">Database Team</MenuItem>
-                      <MenuItem value="Security Team">Security Team</MenuItem>
-                      <MenuItem value="SAP Team">SAP Team</MenuItem>
-                      <MenuItem value="HR Support">HR Support</MenuItem>
+                      <MenuItem value="Application Support">Application Support</MenuItem>
+                      <MenuItem value="Database Operations">Database Operations</MenuItem>
+                      <MenuItem value="DevOps & Cloud Infra">DevOps & Cloud Infra</MenuItem>
+                      <MenuItem value="Network & Security">Network & Security</MenuItem>
+                      <MenuItem value="SAP / ERP Team">SAP / ERP Team</MenuItem>
+                      <MenuItem value="Identity & Access Management">Identity & Access Management</MenuItem>
+                      <MenuItem value="IT Admin">IT Admin</MenuItem>
+                      <MenuItem value="Desktop Support">Desktop Support</MenuItem>
+                      <MenuItem value="Procurement">Procurement</MenuItem>
+                      <MenuItem value="HR Operations">HR Operations</MenuItem>
+                      <MenuItem value="General Support">General Support</MenuItem>
                     </Select>
                   </FormControl>
                 </Grid>
@@ -560,29 +599,36 @@ export default function AgentPortalPage() {
             </Paper>
 
             {/* PROACTIVE KNOWLEDGE & SOP RECOMMENDATIONS */}
-            {recommendations.length > 0 && (
-              <KnowledgeRecommendationPanel articles={recommendations} />
+            {(loadingRecommendations || (recommendations && recommendations.length > 0)) && (
+              <KnowledgeRecommendationPanel articles={recommendations} loading={loadingRecommendations} />
             )}
 
             {/* SIMILAR RESOLVED TICKETS */}
             {ticketDetail.similar_tickets && ticketDetail.similar_tickets.length > 0 && (
               <Paper sx={{ p: 2, bgcolor: theme.palette.mode === 'light' ? '#FFFBEB' : '#2A1B14', border: '1px solid #FDE68A', borderRadius: 2, mb: 2.5 }}>
-                <Typography variant="caption" fontWeight={800} style={{ color: '#B45309', display: 'block', mb: 1 }}>
+                <Typography variant="caption" fontWeight={800} sx={{ color: '#B45309', display: 'block', mb: 1 }}>
                   SIMILAR RESOLVED INCIDENTS (HYBRID MATCH):
                 </Typography>
                 <Box display="flex" flexDirection="column" gap={1}>
-                  {ticketDetail.similar_tickets.map((st: any) => (
-                    <Box key={st.id} display="flex" justifyContent="space-between" alignItems="center">
-                      <Typography variant="caption" fontWeight={700} style={{ color: '#92400E' }}>
-                        #{st.id} - {st.title} (Match: {Math.round(st.similarity_score * 100)}%)
-                      </Typography>
-                      {st.resolution_summary && (
-                        <Typography variant="caption" style={{ color: theme.palette.text.secondary, fontStyle: 'italic' }}>
-                          Fix: {st.resolution_summary.slice(0, 80)}...
+                  {ticketDetail.similar_tickets.map((st: any) => {
+                    const rawScore = st.similarity_score ?? st.relevance_pct ?? st.score
+                    const validPct = typeof rawScore === 'number' && !isNaN(rawScore)
+                      ? (rawScore <= 1.0 ? Math.round(rawScore * 100) : Math.round(rawScore))
+                      : null
+                    const matchLabel = validPct != null ? `(Match: ${validPct}%)` : '(Related Incident)'
+                    return (
+                      <Box key={st.id} display="flex" justifyContent="space-between" alignItems="center">
+                        <Typography variant="caption" fontWeight={700} style={{ color: '#92400E' }}>
+                          #{st.id} - {st.title} {matchLabel}
                         </Typography>
-                      )}
-                    </Box>
-                  ))}
+                        {st.resolution_summary && (
+                          <Typography variant="caption" style={{ color: theme.palette.text.secondary, fontStyle: 'italic' }}>
+                            Fix: {st.resolution_summary.slice(0, 80)}...
+                          </Typography>
+                        )}
+                      </Box>
+                    )
+                  })}
                 </Box>
               </Paper>
             )}
@@ -592,8 +638,26 @@ export default function AgentPortalPage() {
                 <Typography variant="caption" style={{ color: theme.palette.text.secondary, fontWeight: 700 }}>
                   DESCRIPTION & CONTEXT:
                 </Typography>
-                <Paper sx={{ p: 2, bgcolor: theme.palette.mode === 'light' ? '#F8FAFC' : '#0F172A', marginTop: 1, marginBottom: 2 }}>
-                  <Typography variant="body2">{ticketDetail.description}</Typography>
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 2.5,
+                    bgcolor: theme.palette.mode === 'light' ? '#F8FAFC' : '#0F172A',
+                    border: `1px solid ${theme.palette.divider}`,
+                    borderRadius: 2,
+                    marginTop: 1,
+                    marginBottom: 2.5,
+                    '& p': { margin: '0 0 12px 0', lineHeight: 1.65, fontSize: '0.9rem' },
+                    '& p:last-child': { margin: 0 },
+                    '& h3': { marginTop: '16px', marginBottom: '8px', fontSize: '1rem', fontWeight: 800, color: theme.palette.mode === 'light' ? '#0F172A' : '#F8FAFC' },
+                    '& ul, & ol': { margin: '0 0 12px 0', paddingLeft: '20px' },
+                    '& li': { marginBottom: '6px', lineHeight: 1.6 },
+                    '& strong': { color: theme.palette.mode === 'light' ? '#1E3A8A' : '#93C5FD' },
+                  }}
+                >
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {ticketDetail.description ? ticketDetail.description.replace(/\\n/g, '\n') : ''}
+                  </ReactMarkdown>
                 </Paper>
 
                 {/* ITSM TIMELINE & AUDIT LOGS */}
@@ -705,7 +769,7 @@ export default function AgentPortalPage() {
                     <Typography variant="subtitle2" fontWeight={700} mb={1}>
                       Ticket is currently OPEN / IN PROGRESS
                     </Typography>
-                    <Typography variant="caption" style={{ color: theme.palette.text.secondary, display: 'block', mb: 2.5 }}>
+                    <Typography variant="caption" sx={{ color: theme.palette.text.secondary, display: 'block', mb: 2.5 }}>
                       Work with the employee via public replies or internal notes. When ready, click below to open the resolution form.
                     </Typography>
                     <Button

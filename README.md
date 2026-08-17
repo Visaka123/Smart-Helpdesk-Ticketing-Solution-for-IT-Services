@@ -1,6 +1,6 @@
 # Smart Help Desk — AI-Powered Enterprise IT Support System
 
-An enterprise-grade IT helpdesk system with AI-driven ticket routing, semantic duplicate detection, SLA monitoring with auto-escalation emails, RAG-powered chatbot, and role-based dashboards.
+Smart Help Desk is a full-stack, enterprise-grade IT Service Management (ITSM) system powered by Machine Learning and Retrieval-Augmented Generation (RAG). It provides automated ticket classification and team routing, multi-stage hybrid semantic duplicate detection, dynamic SLA tracking with automated email escalations, a grounded AI virtual assistant, and role-based interactive workspaces for employees, support agents, and managers.
 
 ---
 
@@ -8,122 +8,134 @@ An enterprise-grade IT helpdesk system with AI-driven ticket routing, semantic d
 
 - [Overview](#overview)
 - [Key Features](#key-features)
-- [ML Model Performance](#ml-model-performance)
-- [Tech Stack](#tech-stack)
+- [System Architecture](#system-architecture)
+- [Technology Stack](#technology-stack)
 - [Project Structure](#project-structure)
 - [Setup & Installation](#setup--installation)
 - [Environment Variables](#environment-variables)
 - [Running the Application](#running-the-application)
-- [Role-Based Dashboards](#role-based-dashboards)
-- [AI Features Deep Dive](#ai-features-deep-dive)
+- [Role-Based Workspaces & Dashboards](#role-based-workspaces--dashboards)
+- [AI & ML Technical Details](#ai--ml-technical-details)
 - [API Reference](#api-reference)
 - [Testing Guide](#testing-guide)
 - [Demo Credentials](#demo-credentials)
+- [Model Training & Evaluation](#model-training--evaluation)
+- [Future Enhancements](#future-enhancements)
 
 ---
 
 ## Overview
 
-Smart Help Desk is a full-stack AI-powered IT support portal built for enterprise environments. Employees raise support tickets which are automatically routed to the correct team using a trained ML classifier. The system prevents duplicate tickets using hybrid semantic + lexical similarity, monitors SLA deadlines and sends escalation emails to managers automatically, and provides an AI chatbot grounded in the company knowledge base.
+Modern enterprise IT departments process thousands of support tickets, facing challenges such as misrouted requests, duplicate incident reports, SLA breaches, and repetitive end-user inquiries.
+
+**Smart Help Desk** addresses these challenges by integrating:
+
+1. **Automated ML Classification** — Uses text embeddings (`all-MiniLM-L6-v2`) and a LightGBM classifier to route incoming tickets to specialized support teams with confidence scoring.
+2. **Hybrid Duplicate Prevention** — Combines semantic cosine similarity, lexical keyword matching, and LLM paraphrase evaluation to detect duplicate incidents org-wide before creation.
+3. **Cross-Employee Privacy & Access Control** — Ensures org-wide incident tracking without exposing sensitive details or creating "Access Denied" navigation dead ends.
+4. **Dynamic SLA Engine & Auto-Escalation** — Calculates resolution deadlines based on ticket priority and automatically fires HTML escalation emails to managers upon SLA risk or breach.
+5. **RAG Virtual Assistant** — An interactive AI chatbot grounded in enterprise Knowledge Base PDFs and SOP documents, featuring citation verification and document downloads.
 
 ---
 
 ## Key Features
 
-### 1. AI-Powered Ticket Routing
-- Automatically assigns every new ticket to the correct support team
-- Uses `all-MiniLM-L6-v2` sentence embeddings + LightGBM classifier
-- **81.77% weighted F1 score** on unseen test data across 6 teams
-- Shows routing confidence % and top alternative teams
-- Low-confidence tickets flagged for manual triage
+### 1. AI-Powered Ticket Classification & Routing
+- Automatically classifies ticket titles and descriptions to assign appropriate support teams.
+- Employs `sentence-transformers/all-MiniLM-L6-v2` (384-dimensional embeddings) and a LightGBM classifier.
+- Displays routing confidence percentages and top alternative team suggestions.
+- Automatically flags low-confidence tickets (< 55% confidence threshold) for manual triage queue review.
 
-### 2. Hybrid Semantic Duplicate Detection
-- Prevents duplicate tickets before they are created
-- Combines semantic embedding similarity (cosine) + lexical keyword overlap (Jaccard)
-- **Open ticket match** → employee auto-linked to existing ticket, no new row created
-- **Resolved ticket match** → verified solution surfaced instantly to employee
-- Match rule: `(semantic >= 0.75 AND lexical >= 0.30) OR semantic >= 0.85`
+### 2. Multi-Stage Hybrid Duplicate Detection
+- Runs real-time similarity checks against active and resolved tickets during ticket creation.
+- **Composite Scoring** — Combines Semantic Cosine Similarity (85% weight) and Lexical Jaccard Keyword Similarity (15% weight).
+- **Secondary LLM Verification** — Evaluates borderline paraphrase matches (`0.28 ≤ semantic_score < 0.48`) to catch reworded, non-technical duplicates.
+- **Resolved Ticket Match** — Instantly surfaces verified solution summaries and resolution steps directly in the interstitial dialog.
+- **Open Ticket Match (Own Ticket)** — Offers a *"View my existing ticket"* action that opens the employee's ticket detail modal (`/tickets?open={id}`).
+- **Open Ticket Match (Cross-Employee Ticket)** — Displays a privacy-safe incident summary with an informational alert and a *"Got it, already tracked"* dismiss button, preventing unauthorized access dead ends.
 
-### 3. SLA Monitoring & Auto-Escalation Email
-- Every ticket gets an SLA deadline based on priority and team policy
-- Background scheduler runs every 5 minutes automatically
-- **AT RISK email** sent at 80% SLA elapsed
-- **BREACH email** sent when SLA deadline passes
-- HTML emails sent to manager via Gmail SMTP with full ticket details
+### 3. Dynamic SLA Engine & Automated Email Escalations
+- Calculates SLA resolution targets dynamically based on priority levels (`Critical`, `High`, `Medium`, `Low`).
+- Background job scheduler (`APScheduler`) audits all active ticket SLA deadlines every 5 minutes.
+- Triggers automated Gmail SMTP emails with HTML formatting to escalation managers:
+  - **AT_RISK Notification** — sent when SLA time elapsed reaches 80%.
+  - **BREACHED Notification** — sent when the SLA deadline passes.
 
-### 4. RAG-Powered AI Chatbot
-- Answers IT questions grounded in company knowledge base (PDFs)
-- Uses FAISS vector index + Groq LLM (Llama 3)
-- Cites source documents with similarity scores
-- Suggests creating a ticket if no answer found
+### 4. RAG-Powered Knowledge Assistant (Chatbot)
+- Grounded conversational AI interface built with `SentenceTransformer` embeddings and the Groq LLM API (Llama 3).
+- Indexes enterprise SOP documentation and PDFs.
+- Provides downloadable SOP guides, source citations, relevance scores, and similar-ticket recommendations.
+- Implements security guardrails to flag high-risk credential queries and sanitize web content.
 
-### 5. Priority Prediction
-- Automatically predicts ticket priority (Critical / High / Medium / Low)
-- Based on description text + requester department
-- Feeds into SLA deadline calculation
-
-### 6. Role-Based Dashboards
-- **Employee** — submit tickets, track status, view resolutions, rate support
-- **Support Agent** — full ticket management, resolve tickets, add comments
-- **Manager** — analytics, SLA overview, team performance metrics
+### 5. Multi-Role Workspaces & Interactive Dashboards
+- **Employee Portal** — Raise tickets with real-time pre-check, view personal ticket status, access interactive ticket detail modals, post replies, rate resolution satisfaction (1–5 stars), and reopen resolved tickets.
+- **Support Agent Workspace** — Dedicated ticket queue, inline team re-assignment, priority/status updates, engineer assignment, public/internal notes, resolution with root-cause logging, and requester splitting.
+- **Manager Command Center** — Real-time SLA compliance percentages, team volume breakdown, breach count tracking, and manager escalation logs.
+- **Analytics View** — Visual charts for category distribution, priority breakdown, SLA compliance, and team ticket volume.
 
 ---
 
-## ML Model Performance
+## System Architecture
 
-| Metric | Score |
-|---|---|
-| Accuracy | 80.48% |
-| Weighted F1 | **81.77%** |
-| Weighted Precision | 82.1% |
-| Weighted Recall | 80.5% |
-| Training samples | 12,000 (2,000/class balanced) |
-| Test samples | 5,389 (20% stratified hold-out) |
-
-### Per-Class F1 Scores
-
-| Team / Class | F1 Score |
-|---|---|
-| General Support | ~88% |
-| Billing & Payments | ~82% |
-| HR Support | ~79% |
-| Returns & Exchanges | ~78% |
-| Service & Maintenance | ~76% |
-| Sales Support | ~72% |
-
-### Model Configuration
-- **Algorithm**: LightGBM (`n_estimators=300, learning_rate=0.1, num_leaves=63`)
-- **Embedder**: `sentence-transformers/all-MiniLM-L6-v2` (384-dim)
-- **Training data**: 26,942 real tickets from 4 datasets, 6 merged classes
-- **Key insight**: Merging `IT Support + Product Support + Customer Service + General Inquiry` → `General Support` was the fix that jumped accuracy from 62% → 81.77%
+```
+                               ┌────────────────────────────────────────┐
+                               │           React 18 + MUI v5            │
+                               │           Frontend Portal              │
+                               └───────────────────┬────────────────────┘
+                                                    │ HTTP / REST
+                                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                       FastAPI Backend App                                         │
+│                                                                                                     │
+│  ┌─────────────────────────┐  ┌──────────────────────────┐  ┌────────────────────────────────┐   │
+│  │   Auth Router (/auth)   │  │   Ticket Router (/ticket)│  │   Chatbot Router (/chatbot)    │   │
+│  │   - JWT Auth & Hash     │  │   - CRUD & Pre-Check     │  │   - RAG Grounded Inquiry       │   │
+│  └─────────────────────────┘  └──────────────────────────┘  └────────────────────────────────┘   │
+│  ┌─────────────────────────┐  ┌──────────────────────────┐  ┌────────────────────────────────┐   │
+│  │   Agent Router (/agent) │  │   SLA Scheduler Service  │  │   Hybrid Duplicate Engine      │   │
+│  │   - Queue & Resolution  │  │   - 5-Min APScheduler    │  │   - Cosine + Jaccard + LLM     │   │
+│  └─────────────────────────┘  └──────────────────────────┘  └────────────────────────────────┘   │
+└──────────────────────────────────────────┬──────────────────────────────────────────────────────┘
+                                            │
+              ┌─────────────────────────────┼─────────────────────────────┐
+              ▼                             ▼                             ▼
+┌─────────────────────────┐   ┌─────────────────────────┐   ┌─────────────────────────┐
+│     SQLAlchemy ORM      │   │  SentenceTransformers   │   │        Groq LLM         │
+│   (SQLite / MySQL DB)   │   │    (all-MiniLM-L6-v2)   │   │   (Llama 3 API Client)  │
+└─────────────────────────┘   └─────────────────────────┘   └─────────────────────────┘
+```
 
 ---
 
-## Tech Stack
+## Technology Stack
 
 ### Backend
-| Component | Technology |
+
+| Layer | Technology |
 |---|---|
-| API Framework | FastAPI |
-| Database | SQLite (SQLAlchemy ORM) |
-| ML Classifier | LightGBM + sentence-transformers |
-| Embeddings | all-MiniLM-L6-v2 (shared singleton) |
-| Vector Search | FAISS |
-| LLM | Groq API (Llama 3) |
-| Background Jobs | APScheduler |
-| Email | Gmail SMTP (smtplib) |
-| Auth | JWT (python-jose) |
+| **Framework** | FastAPI (Python 3.10+) |
+| **Server** | Uvicorn |
+| **Database & ORM** | SQLAlchemy, SQLite (default), PyMySQL / PostgreSQL support |
+| **Machine Learning** | LightGBM, scikit-learn, Joblib |
+| **NLP & Embeddings** | `sentence-transformers` (`all-MiniLM-L6-v2`, 384-dimensional) |
+| **Vector Search & RAG** | FAISS, Groq LLM API (Llama 3) |
+| **Background Scheduler** | APScheduler |
+| **Email Escalations** | Python `smtplib` (Gmail SMTP) |
+| **Authentication** | JWT (`python-jose`), Passlib (`bcrypt`), RBAC headers |
 
 ### Frontend
-| Component | Technology |
+
+| Layer | Technology |
 |---|---|
-| Framework | React 18 + TypeScript |
-| UI Library | Material UI v5 |
-| State Management | Redux Toolkit |
-| Routing | React Router DOM v6 |
-| HTTP Client | Axios |
-| Charts | Chart.js + react-chartjs-2 |
-| Build Tool | Vite |
+| **Framework** | React 18, TypeScript |
+| **Build Tool** | Vite 5 |
+| **UI Library** | Material-UI (MUI v5), Emotion |
+| **State Management** | Redux Toolkit |
+| **Routing** | React Router DOM v6 |
+| **HTTP Client** | Axios |
+| **Data Visualization** | Chart.js, `react-chartjs-2` |
+
+> **Note:** FAISS is listed as part of the vector search stack. Confirm during review whether it is actively used for indexed search or whether current similarity checks are computed directly (pairwise) without a FAISS index — update this table if the latter.
 
 ---
 
@@ -133,66 +145,50 @@ Smart Help Desk is a full-stack AI-powered IT support portal built for enterpris
 smart-helpdesk/
 ├── backend/
 │   ├── ai/
-│   │   ├── classifier/
-│   │   │   ├── build_dataset.py      # Dataset builder — merges 4 raw datasets, 6 classes
-│   │   │   ├── train_router.py       # LightGBM training pipeline (v5, no GridSearch)
-│   │   │   └── model_report.py       # Evaluator report — HTML + console metrics
-│   │   ├── duplicate/
-│   │   │   └── search.py             # FAISS-based semantic search
-│   │   ├── priority/
-│   │   │   └── train_priority.py     # Priority classifier training
-│   │   └── rag/
-│   │       ├── build_kb.py           # Knowledge base PDF indexer
-│   │       ├── groq_client.py        # Groq LLM client
-│   │       └── query_kb.py           # RAG query pipeline
+│   │   ├── classifier/             # Model dataset builder, router training & evaluator report
+│   │   ├── duplicate/              # FAISS vector indexing & semantic search
+│   │   ├── priority/               # Priority model trainer
+│   │   └── rag/                    # Knowledge Base indexing, Groq client & RAG pipeline
 │   ├── app/
-│   │   ├── auth/                     # JWT auth, password hashing, RBAC
-│   │   ├── tickets/                  # Ticket CRUD, ML routing, duplicate check
-│   │   ├── sla/
-│   │   │   └── service.py            # SLA audit + auto-escalation email
-│   │   ├── duplicate/
-│   │   │   └── service.py            # Hybrid semantic + lexical duplicate engine
-│   │   ├── chatbot/                  # RAG chatbot service + routes
-│   │   ├── agent/                    # Agent portal routes
-│   │   ├── core/
-│   │   │   └── embeddings.py         # Shared SentenceTransformer singleton
-│   │   ├── database/
-│   │   │   ├── database.py           # SQLAlchemy engine + session
-│   │   │   └── seed_data.py          # Default users, teams, tickets, KB articles
-│   │   ├── models/                   # SQLAlchemy ORM models
-│   │   └── main.py                   # FastAPI app + APScheduler startup
+│   │   ├── agent/                  # Agent workspace routes (queue, detail, resolve, split)
+│   │   ├── analytics/              # Analytics aggregation helpers
+│   │   ├── auth/                   # JWT auth, hashing & RBAC header middleware
+│   │   ├── chatbot/                # RAG chatbot routes & fallback guardrails
+│   │   ├── core/                   # Shared SentenceTransformer singleton loader
+│   │   ├── database/               # SQLAlchemy setup & database seeder
+│   │   ├── duplicate/              # Hybrid duplicate detection engine
+│   │   ├── models/                 # SQLAlchemy ORM models (Ticket, User, Team, etc.)
+│   │   ├── priority/                # Priority inference service
+│   │   ├── routing/                # ML team classification predictor service
+│   │   ├── sla/                    # SLA calculation & email escalation service
+│   │   ├── tickets/                # Ticket CRUD & pre-check endpoints
+│   │   └── main.py                 # FastAPI application entry point & APScheduler startup
 │   ├── model_assets/
-│   │   ├── models/
-│   │   │   ├── router.pkl            # Trained LightGBM classifier
-│   │   │   ├── label_encoder.pkl     # Class label encoder
-│   │   │   ├── priority.pkl          # Priority classifier
-│   │   │   ├── kb.index              # FAISS knowledge base index
-│   │   │   ├── model_report.html     # Evaluator-ready model report
-│   │   │   ├── router_confusion_matrix.png
-│   │   │   └── per_class_f1.png
-│   │   ├── processed/
-│   │   │   └── training_real.csv     # 26,942 cleaned training samples
-│   │   └── knowlegde/                # Company KB PDFs (VPN, SAP, Security, etc.)
-│   ├── .env                          # Environment variables
-│   └── requirements.txt
+│   │   ├── models/                 # Trained LightGBM router, priority model & FAISS index
+│   │   └── processed/              # Processed training dataset
+│   ├── requirements.txt            # Python dependencies
+│   └── .env                        # Environment configuration
 └── frontend/
     ├── src/
-    │   ├── pages/
-    │   │   ├── DashboardPage.tsx
-    │   │   ├── CreateTicketPage.tsx   # Ticket form + duplicate detection modal
-    │   │   ├── TicketsPage.tsx
-    │   │   ├── AgentPortalPage.tsx
-    │   │   ├── AnalyticsPage.tsx
-    │   │   └── ChatbotPage.tsx
+    │   ├── api/                    # Axios API client setup
     │   ├── components/
-    │   │   ├── layout/
-    │   │   │   ├── AppLayout.tsx      # Role switcher, theme, sidebar
-    │   │   │   ├── Header.tsx
-    │   │   │   └── Sidebar.tsx
-    │   │   └── ChatbotDrawer.tsx
-    │   └── store/                     # Redux slices
+    │   │   ├── layout/             # AppLayout, Header, Sidebar
+    │   │   ├── ui/                 # SemanticBadges, ITSMTimeline, KnowledgePanel
+    │   │   ├── ChatbotDrawer.tsx   # Slide-out virtual assistant drawer
+    │   │   └── EmployeeTicketDetailsModal.tsx  # Employee ticket detail modal
+    │   ├── pages/
+    │   │   ├── DashboardPage.tsx   # Overview dashboard & KPI cards
+    │   │   ├── CreateTicketPage.tsx# Ticket submission form & duplicate interstitials
+    │   │   ├── TicketsPage.tsx     # Ticket management list page
+    │   │   ├── AgentPortalPage.tsx # Support Agent workspace
+    │   │   ├── AnalyticsPage.tsx   # Analytics & chart visualizations
+    │   │   └── ChatbotPage.tsx     # Dedicated RAG Virtual Assistant page
+    │   ├── store/                  # Redux store slices
+    │   ├── App.tsx                 # Route configuration
+    │   └── main.tsx                # Frontend entry point
     ├── package.json
-    └── vite.config.ts
+    ├── vite.config.ts
+    └── index.html
 ```
 
 ---
@@ -200,36 +196,40 @@ smart-helpdesk/
 ## Setup & Installation
 
 ### Prerequisites
-- Python 3.10+
-- Node.js 18+
-- Git
+- **Python**: version 3.10 or higher
+- **Node.js**: version 18 or higher (with `npm`)
+- **Git**
 
-### 1. Clone the repository
+### 1. Clone Repository
 ```bash
 git clone https://github.com/YOUR_USERNAME/smart-helpdesk.git
 cd smart-helpdesk
 ```
 
-### 2. Backend setup
+### 2. Backend Setup
 ```bash
 cd backend
 python -m venv venv
-venv\Scripts\activate        # Windows
-# source venv/bin/activate   # Mac/Linux
+
+# Windows (PowerShell)
+.\venv\Scripts\Activate.ps1
+
+# Linux / macOS
+# source venv/bin/activate
 
 pip install -r requirements.txt
-pip install lightgbm sentence-transformers faiss-cpu apscheduler groq python-dotenv
 ```
 
-### 3. Frontend setup
+### 3. Frontend Setup
 ```bash
-cd frontend
+cd ../frontend
 npm install
 ```
 
-### 4. Seed the database
+### 4. Initialize Database
+Initialize SQLite database tables and seed default users, teams, and sample data:
 ```bash
-cd backend
+cd ../backend
 python -c "from app.database.seed_data import init_db; init_db()"
 ```
 
@@ -237,242 +237,194 @@ python -c "from app.database.seed_data import init_db; init_db()"
 
 ## Environment Variables
 
-Create `backend/.env`:
+Create a `.env` file inside `backend/`:
 
 ```env
-# Database
+# Database (SQLite default)
 DATABASE_URL=sqlite:///./smart_helpdesk.db
 
-# Auth
-JWT_SECRET=supersecretkey
+# Authentication
+JWT_SECRET=your_jwt_secret_key_here
 
-# Groq LLM (for RAG chatbot)
+# Groq LLM API (for RAG Chatbot)
 GROQ_API_KEY=your_groq_api_key_here
 
-# SLA Auto-Escalation Email (Gmail)
-SMTP_SENDER_EMAIL=your_gmail@gmail.com
-SMTP_APP_PASSWORD=xxxx xxxx xxxx xxxx
-ESCALATION_MANAGER_EMAIL=manager@example.com
+# SLA Auto-Escalation Email (Gmail SMTP)
+SMTP_SENDER_EMAIL=your_email@gmail.com
+SMTP_APP_PASSWORD=your_gmail_app_password
+ESCALATION_MANAGER_EMAIL=manager_email@gmail.com
 ```
 
-> **Gmail App Password setup:**
-> 1. Enable 2-Step Verification at [myaccount.google.com/security](https://myaccount.google.com/security)
-> 2. Go to [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
-> 3. Create an App Password → paste the 16-char code into `SMTP_APP_PASSWORD`
+> Replace all placeholder values with your actual service credentials. Never commit a populated `.env` file to version control.
 
 ---
 
 ## Running the Application
 
-### Start Backend
+### Start Backend API
 ```bash
 cd backend
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload --port 8000
 ```
-API runs at: `http://localhost:8000`
-Swagger docs: `http://localhost:8000/docs`
+- API Endpoint: `http://localhost:8000`
+- Interactive Swagger Documentation: `http://localhost:8000/docs`
 
-### Start Frontend
+### Start Frontend Application
 ```bash
 cd frontend
 npm run dev
 ```
-App runs at: `http://localhost:5173`
+- Frontend Web App: `http://localhost:5173`
 
 ---
 
-## Role-Based Dashboards
+## Role-Based Workspaces & Dashboards
 
-The app has a **Switch Role** button in the header to cycle between views:
+Use the **Switch Role** control in the header to switch between roles:
 
-| Role | Access |
-|---|---|
-| **Employee** | Submit tickets, view own tickets, track status, rate resolution, AI chatbot |
-| **Support Agent** | All tickets, resolve/update tickets, add internal notes, agent portal |
-| **Manager** | Analytics dashboard, SLA overview, team performance, escalation logs |
+| Role | Access Level | Capabilities |
+|---|---|---|
+| **Employee** | Self-Service | Raise tickets, view personal tickets, track status, view resolution details, rate satisfaction (1–5 stars), reopen tickets, interact with RAG chatbot |
+| **Support Agent** | Agent Workspace | View ticket queue, filter by team/status/SLA, reassign teams, adjust priority/status, post public replies & internal notes, resolve tickets with root-cause analysis, split requesters |
+| **Manager** | Command Center | View overall SLA compliance metrics, team performance breakdowns, SLA breach counts, and manager escalation audit logs |
+| **Admin** | Administration | System administration and access control oversight |
 
 ---
 
-## AI Features Deep Dive
+## AI & ML Technical Details
 
-### Ticket Routing Pipeline
-```
-Employee submits ticket description
-        ↓
-SentenceTransformer encodes text → 384-dim vector
-        ↓
-LightGBM classifier predicts team + confidence
-        ↓
-If confidence < 0.5 → flagged as Triage
-        ↓
-Ticket assigned to team, SLA deadline set
-```
+### 1. Ticket Classification & Routing Model
+- **Input**: ticket title and description text.
+- **Embedding**: encoded into a 384-dimensional vector using `all-MiniLM-L6-v2`.
+- **Classifier**: LightGBM classifier predicting the target support team.
+- **Confidence Triage**: outputs a probability confidence score; classifications below 55% are routed to `Unassigned/Triage`.
 
-### Duplicate Detection Pipeline
-```
-Employee submits ticket
-        ↓
-Hybrid engine checks all existing tickets
-        ↓
-Semantic score (cosine similarity of embeddings)
-  +
-Lexical score (Jaccard similarity of keywords)
-        ↓
-Match rule: (sem >= 0.75 AND lex >= 0.30) OR sem >= 0.85
-        ↓
-Open match   → Hard block, link employee to existing ticket
-Resolved match → Hard block, show verified solution
-No match     → Create new ticket
-```
+### 2. Hybrid Duplicate Detection Engine
+- **Stage 1 (Hybrid Score):**
 
-### SLA Escalation Pipeline
-```
-APScheduler runs every 5 minutes (background, automatic)
-        ↓
-Checks all active tickets (open, in_progress, etc.)
-        ↓
-80% SLA elapsed → AT RISK email to manager
-100% SLA elapsed → BREACHED email to manager
-        ↓
-Email contains: ticket ID, title, priority, team,
-                requester, SLA deadline, overdue time
-```
+  ```
+  Composite Score = (0.85 × Semantic Cosine) + (0.15 × Lexical Jaccard)
+  ```
 
-### RAG Chatbot Pipeline
-```
-Employee asks question
-        ↓
-Question embedded → FAISS search over KB PDFs
-        ↓
-Top-k relevant chunks retrieved
-        ↓
-Groq LLM (Llama 3) generates grounded answer
-        ↓
-Response includes source citations + similarity scores
-```
+  High-confidence match triggered if `Semantic ≥ 0.48`, `Composite ≥ 0.45`, or `Lexical ≥ 0.50`.
+
+- **Stage 2 (LLM Verification):** for borderline scores (`0.28 ≤ Semantic < 0.48`), the Groq LLM evaluates paraphrase similarity to confirm or reject duplicate status.
+- **Privacy Safety:** checks ticket ownership (`is_own_ticket`). Owned tickets allow direct modal viewing (`/tickets?open={id}`), while cross-employee matches present a summary with a dismissal option to preserve privacy.
+
+### 3. SLA Escalation Logic
+- **Priority SLAs:**
+  - `Critical` — 2h response / 6h resolution
+  - `High` — 8h response / 24h resolution
+  - `Medium` — 16h response / 48h resolution
+  - `Low` — 24h response / 72h resolution
+- **Audit Execution:** `APScheduler` scans active tickets every 5 minutes. Sends formatted HTML email alerts when the SLA threshold passes 80% (`AT_RISK`) or 100% (`BREACHED`).
 
 ---
 
 ## API Reference
 
-### Tickets
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/ticket/create` | Create ticket (with duplicate check) |
-| GET | `/ticket/all` | Get all tickets (role-filtered) |
-| GET | `/ticket/my-tickets` | Get employee's own tickets |
-| GET | `/ticket/stats` | Dashboard statistics |
-| POST | `/ticket/route-ticket` | ML routing preview |
-| POST | `/ticket/check-duplicate` | Manual duplicate check |
-| GET | `/ticket/employee/{id}` | Employee ticket detail |
-| POST | `/ticket/employee/comment/{id}` | Add comment |
-| POST | `/ticket/employee/rate/{id}` | Submit satisfaction rating |
-| POST | `/ticket/employee/reopen/{id}` | Reopen resolved ticket |
+### Auth (`/auth`)
+- `POST /auth/register` — register a new employee account.
+- `POST /auth/login` — authenticate a user and receive a JWT token.
 
-### Auth
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/auth/login` | Login, returns JWT token |
-| POST | `/auth/register` | Register new employee |
+### Ticket (`/ticket`)
+- `POST /ticket/create` — submit a new ticket with optional duplicate pre-check override.
+- `POST /ticket/check-duplicate` — perform a real-time pre-submission duplicate check.
+- `POST /ticket/route-ticket` — preview ML classification and team routing.
+- `GET /ticket/all` — list tickets filtered by caller role.
+- `GET /ticket/stats` — retrieve general ticket dashboard metrics.
+- `GET /ticket/employee/{id}` — fetch detailed ticket information for the employee owner.
+- `POST /ticket/employee/comment/{id}` — post a public reply to a ticket thread.
+- `POST /ticket/employee/rate/{id}` — submit a satisfaction rating (1–5 stars).
+- `POST /ticket/employee/reopen/{id}` — reopen a resolved ticket.
 
-### Agent
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/agent/tickets` | All tickets for agent view |
-| POST | `/agent/tickets/{id}/resolve` | Resolve ticket with notes |
-| POST | `/agent/tickets/{id}/update-status` | Update ticket status |
+### Chatbot (`/chatbot`)
+- `POST /chatbot/ask` — query the RAG Knowledge Base virtual assistant.
+- `POST /chatbot/recommendations` — fetch proactive documentation recommendations.
+- `POST /chatbot/feedback` — submit feedback on KB article usefulness.
 
-### Chatbot
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/chatbot/query` | RAG chatbot query |
+### Agent Workspace (`/agent`)
+- `GET /agent/queue` — fetch agent queue tickets with SLA indicators.
+- `GET /agent/detail/{id}` — fetch detailed ticket data for support agents.
+- `POST /agent/assign-team/{id}` — reassign a ticket to another support team.
+- `POST /agent/change-priority/{id}` — update ticket priority level.
+- `POST /agent/change-status/{id}` — update ticket status.
+- `POST /agent/assign-engineer/{id}` — assign a support specialist to a ticket.
+- `POST /agent/resolve/{id}` — resolve a ticket with resolution summary and root cause.
+- `POST /agent/split-requester/{id}` — un-link a co-requester into a new standalone ticket.
+- `POST /agent/comment/{id}` — post a public reply or internal agent note.
+- `GET /agent/agent-stats` — fetch operational agent statistics.
+- `GET /agent/manager-dashboard` — fetch manager escalation metrics and team performance.
 
 ---
 
 ## Testing Guide
 
-### Test Duplicate Detection
-
-**Step 1** — Submit a ticket as Alice Employee (Employee role):
-```
-Name: Alice Employee
-Title: Outlook keeps asking for password repeatedly
-Description: My Outlook desktop client keeps prompting for my Microsoft account
-             password every few minutes even after entering correct credentials.
-```
-
-**Step 2** — Resolve the ticket (switch to Support Agent role → Agent Portal)
-
-**Step 3** — Submit similar ticket as Bob (change name field):
-```
-Name: Bob Sales Employee
-Title: Outlook password prompt keeps appearing
-Description: Outlook is constantly asking me to re-enter my password on my
-             Windows laptop. Keeps popping up again after a few minutes.
-```
-→ **Expected**: Green modal — "This issue has already been resolved!"
-
-### Test SLA Auto-Escalation Email
+The repository includes test scripts in `backend/` to validate API routes, authentication, duplicate detection, and SLA escalation logic:
 
 ```bash
 cd backend
+
+# Test employee portal endpoints and duplicate detection
+python test_employee_portal_and_dedup.py
+
+# Test hard-block duplicate prevention logic
+python test_hard_block_sequence.py
+
+# Test full end-to-end API sequence
+python test_e2e_sequence.py
+
+# Test dashboard stats and SLA states
+python test_dashboard_sla_final_state.py
+
+# Test SLA auto-escalation trigger manually
 python run_sla_test.py
 ```
-This backdates a ticket's SLA to 45 minutes ago. The background scheduler fires the breach email within 5 minutes automatically.
 
-### Generate Model Report
-```bash
-cd backend
-python ai/classifier/model_report.py
-```
-Opens `model_assets/models/model_report.html` — full evaluator report with confusion matrix, per-class F1, and metrics.
+> Verify each script exists and runs cleanly before publishing this section — a testing guide referencing missing or broken scripts undermines trust in the rest of the documentation.
 
 ---
 
 ## Demo Credentials
 
+The seeded database (`init_db()`) contains pre-configured accounts for testing:
+
 | Role | Email | Password |
 |---|---|---|
-| Admin | admin@helpdesk.com | admin123 |
-| Manager | manager@helpdesk.com | manager123 |
-| Support Agent | agent@helpdesk.com | agent123 |
-| Employee (Alice) | alice@company.com | user123 |
-| Employee (Bob) | bob@company.com | user123 |
+| **Admin** | `admin@helpdesk.com` | `admin123` |
+| **Manager** | `manager@helpdesk.com` | `manager123` |
+| **Support Agent** | `agent@helpdesk.com` | `agent123` |
+| **Network Agent** | `mike.agent@helpdesk.com` | `agent123` |
+| **Employee (Finance)** | `alice@company.com` | `user123` |
+| **Employee (Sales)** | `bob@company.com` | `user123` |
+
+> These are demo/seed credentials for local development only — do not reuse these passwords in any deployed or production environment.
 
 ---
 
-## SLA Policy Reference
+## Model Training & Evaluation
 
-| Priority | Response SLA | Resolution SLA |
-|---|---|---|
-| Critical | 2 hours | 6 hours |
-| High | 8 hours | 24 hours |
-| Medium | 16 hours | 48 hours |
-| Low | 24 hours | 72 hours |
+To re-train the router model or generate evaluation reports:
 
----
-
-## Dataset & Training
-
-The routing classifier was trained on 4 real-world helpdesk datasets:
-
-| Dataset | Source | Used |
-|---|---|---|
-| tickets1 | IT Support tickets with Department labels | Yes |
-| tickets2 | 493 unique descriptions × 2000 repeats | No — template noise |
-| tickets3 | Multi-language tickets (English only) | Yes |
-| tickets4 | Anonymized group names ("Group 70") | No — meaningless labels |
-
-**Class merging insight**: `IT Support`, `Product Support`, `Customer Service`, and `General Inquiry` shared near-identical top-50 vocabulary. Merging them into `General Support` eliminated artificial ambiguity and was the key fix that improved F1 from 62% → 81.77%.
-
-To retrain from scratch:
 ```bash
 cd backend
-python ai/classifier/build_dataset.py   # rebuild training_real.csv
-python ai/classifier/train_router.py    # train LightGBM (~15 min)
-python ai/classifier/model_report.py    # generate evaluation report
+
+# Rebuild processed dataset
+python ai/classifier/build_dataset.py
+
+# Train LightGBM classification model
+python ai/classifier/train_router.py
+
+# Generate evaluation report (HTML report saved to model_assets/models/model_report.html)
+python ai/classifier/model_report.py
 ```
 
 ---
 
-*Built with FastAPI · React · LightGBM · sentence-transformers · FAISS · Groq*
+## Future Enhancements
+
+- **SSO Integration** — add OAuth2 / SAML single sign-on support (Okta, Azure AD, Google Workspace).
+- **Multi-Tenant Support** — extend the database schema to isolate ticket queues across separate enterprise organizations.
+- **WebSocket Live Updates** — real-time notifications for live comment threads and agent assignment changes.
+- **Mobile Application** — a native mobile app built with React Native for support agents on call.
+- **Containerization** — add Dockerfiles and `docker-compose.yml` service configurations for containerized deployment.

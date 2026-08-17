@@ -6,7 +6,7 @@ from typing import Optional, List, Dict, Any
 
 from app.database.database import SessionLocal
 from app.models import Ticket, TicketRequester, TicketComment, User, SLAEscalationLog, Team
-from app.routing.service import predict_team_ml
+from app.routing.service import predict_team_ml, predict_ticket_category, post_process_category, route_team_with_llm, classify_and_route_ticket
 from app.priority.service import predict_priority_enhanced
 from app.sla.service import calculate_sla_due_at, audit_and_trigger_sla_escalations
 from app.duplicate.service import detect_hybrid_duplicates, record_duplicate_feedback
@@ -18,13 +18,15 @@ router = APIRouter()
 class TicketCreateRequest(BaseModel):
     title: str
     description: str
-    category: Optional[str] = "General IT"
+    category: Optional[str] = None
     requester_name: Optional[str] = "Alice Employee"
     requester_department: Optional[str] = "Finance"
     skip_duplicate_check: Optional[bool] = False
 
 class RouteTicketRequest(BaseModel):
+    title: Optional[str] = ""
     description: str
+    department: Optional[str] = "General"
 
 class DuplicateCheckRequest(BaseModel):
     title: str
@@ -42,11 +44,60 @@ class EmployeeReopenRequest(BaseModel):
 
 @router.post("/route-ticket")
 def route_ticket_endpoint(req: RouteTicketRequest):
-    return predict_team_ml(req.description)
+    # Single-pass LLM Classification & Routing
+    title = req.title or ""
+    desc = req.description or ""
+    llm_res = classify_and_route_ticket(title, desc)
+
+    category = llm_res["category"]
+    assigned_team = llm_res["assigned_team"]
+    priority = llm_res["priority"]
+    sla_target = llm_res["sla_target"]
+
+    return {
+        "predicted_category": category,
+        "raw_category": category,
+        "category_confidence": 0.95,
+        "top_3_categories": [{"category": category, "confidence": 0.95}],
+        "predicted_team": assigned_team,
+        "suggested_team": assigned_team,
+        "routing_confidence": 0.95,
+        "is_low_confidence": False,
+        "top_3_alternatives": [{"team": assigned_team, "confidence": 0.95}],
+        "priority": priority,
+        "sla_target": sla_target,
+        "priority_confidence": 0.95,
+        "priority_reasons": ["Single-pass LLM ITSM Dispatcher"],
+    }
 
 @router.post("/check-duplicate")
-def check_duplicate_endpoint(req: DuplicateCheckRequest):
-    return detect_hybrid_duplicates(req.title, req.description)
+def check_duplicate_endpoint(req: DuplicateCheckRequest, request: Request):
+    db = SessionLocal()
+    try:
+        dup_res = detect_hybrid_duplicates(req.title, req.description)
+
+        def annotate_match(m):
+            if not m or "ticket_id" not in m:
+                return m
+            t_obj = db.query(Ticket).filter(Ticket.id == m["ticket_id"]).first()
+            if t_obj:
+                m["is_own_ticket"] = is_ticket_owned_by_user(t_obj, request, db)
+            else:
+                m["is_own_ticket"] = False
+            return m
+
+        if dup_res.get("top_match"):
+            annotate_match(dup_res["top_match"])
+        for m in dup_res.get("open_matches", []):
+            annotate_match(m)
+        for m in dup_res.get("resolved_matches", []):
+            annotate_match(m)
+        for m in dup_res.get("matched_tickets", []):
+            annotate_match(m)
+
+        return dup_res
+    finally:
+        db.close()
 
 @router.post("/create")
 def create_ticket(req: TicketCreateRequest, request: Request):
@@ -66,7 +117,6 @@ def create_ticket(req: TicketCreateRequest, request: Request):
     req_dept = req.requester_department or (user.department if user else "General")
 
     # 0. RAPID RE-SUBMISSION & UPSERT DEDUPLICATION CHECK
-    # Prevents duplicate inserts from repeated API calls, page refreshes, or React Strict Mode
     recent_dup = db.query(Ticket).filter(
         Ticket.title == req.title.strip(),
         Ticket.description == req.description.strip(),
@@ -82,10 +132,14 @@ def create_ticket(req: TicketCreateRequest, request: Request):
                 "title": recent_dup.title,
                 "description": recent_dup.description,
                 "category": recent_dup.category,
+                "predicted_category": recent_dup.category,
                 "status": recent_dup.status,
                 "priority": recent_dup.priority,
+                "priority_confidence": recent_dup.priority_confidence,
                 "predicted_team": recent_dup.assigned_team,
+                "assigned_team": recent_dup.assigned_team,
                 "routing_confidence": recent_dup.routing_confidence,
+                "is_low_confidence_routed": recent_dup.is_low_confidence_routed,
                 "requester_name": recent_dup.requester_name,
                 "requester_count": 1,
                 "created_at": str(recent_dup.created_at),
@@ -174,39 +228,42 @@ def create_ticket(req: TicketCreateRequest, request: Request):
             db.close()
             return res_dict
 
-    # BRANCH C: No Match -> ALLOW DECISION: Proceed to ML Team Routing & Ticket Row Creation
-    print(f"[DUPLICATE CHECK DECISION] -> ALLOW DECISION: No duplicate match. Proceeding to ML Team Routing.")
+    # BRANCH C: No Match -> ALLOW DECISION: Proceed to ML 8-Class Category & Team Routing & Priority
+    print(f"[DUPLICATE CHECK DECISION] -> ALLOW DECISION: No duplicate match. Proceeding to ML Classification.")
 
-    routing_res = predict_team_ml(req.description)
-    team = routing_res["predicted_team"]
-    routing_conf = routing_res["confidence"]
-    top_3 = json.dumps(routing_res.get("top_3_alternatives", []))
-    is_triage = routing_res.get("is_low_confidence", False)
+    # Single-pass LLM Classification & Routing
+    llm_res = classify_and_route_ticket(req.title, req.description)
+    final_category = llm_res["category"]
+    assigned_team = llm_res["assigned_team"]
+    priority = llm_res["priority"]
+    sla_target = llm_res["sla_target"]
+    category_confidence = llm_res.get("category_confidence", 0.95)
 
-    priority_res = predict_priority_enhanced(
-        description=req.description,
-        department=req_dept,
-    )
-    priority = priority_res["priority"]
-    priority_conf = priority_res["confidence"]
+    if req.category and req.category.strip() and req.category != "string":
+        final_category = req.category.strip()
 
-    sla_due = calculate_sla_due_at(priority=priority, team_name=team, db=db)
+    is_triage = False
+
+    # 3. SLA Calculation
+    sla_due = calculate_sla_due_at(priority=priority, team_name=assigned_team, db=db)
+    now_dt = datetime.now()
+    sla_hours = round((sla_due - now_dt).total_seconds() / 3600.0, 1)
 
     ticket = Ticket(
         title=req.title,
         description=req.description,
-        category=req.category,
+        category=final_category,
         priority=priority,
-        priority_confidence=priority_conf,
+        priority_confidence=category_confidence,
         status="open",
-        assigned_team=team,
-        routing_confidence=routing_conf,
-        top_alternative_teams=top_3,
-        is_low_confidence_routed=is_triage,
+        assigned_team=assigned_team,
+        routing_confidence=category_confidence,
+        top_alternative_teams=json.dumps([{"team": assigned_team, "confidence": category_confidence}]),
+        is_low_confidence_routed=False,
         created_by=created_by_id,
         requester_name=req_name,
         requester_department=req_dept,
-        created_at=datetime.now(),
+        created_at=now_dt,
         sla_due_at=sla_due,
     )
 
@@ -224,7 +281,7 @@ def create_ticket(req: TicketCreateRequest, request: Request):
         )
         db.add(log)
         ticket.escalated_to_manager = True
-        ticket.escalated_at = datetime.now()
+        ticket.escalated_at = now_dt
         db.commit()
 
     res_dict = {
@@ -234,16 +291,24 @@ def create_ticket(req: TicketCreateRequest, request: Request):
             "title": ticket.title,
             "description": ticket.description,
             "category": ticket.category,
+            "predicted_category": ticket.category,
+            "category_confidence": category_confidence,
             "status": ticket.status,
             "priority": ticket.priority,
+            "priority_confidence": ticket.priority_confidence,
             "predicted_team": ticket.assigned_team,
+            "assigned_team": ticket.assigned_team,
+            "suggested_team": ticket.assigned_team,
             "routing_confidence": ticket.routing_confidence,
+            "is_low_confidence_routed": ticket.is_low_confidence_routed,
+            "top_3_alternatives": [{"category": ticket.category, "confidence": category_confidence}],
             "requester_name": ticket.requester_name,
-            "requester_count": 1,
+            "requester_department": ticket.requester_department,
             "created_at": str(ticket.created_at),
             "sla_due_at": str(ticket.sla_due_at),
+            "sla_hours": sla_hours,
         },
-        "message": "Ticket created successfully and queued for support.",
+        "message": "Ticket created successfully and classified by Single-Pass LLM Dispatcher.",
     }
 
     db.close()

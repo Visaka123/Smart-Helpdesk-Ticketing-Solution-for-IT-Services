@@ -11,6 +11,9 @@ import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf'
 import DescriptionIcon from '@mui/icons-material/Description'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import MenuBookIcon from '@mui/icons-material/MenuBook'
+import LanguageIcon from '@mui/icons-material/Language'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import axios from 'axios'
 
 const API_BASE = 'http://localhost:8000'
@@ -84,7 +87,8 @@ export default function ChatbotDrawer({ open, onClose, onOpenCreateTicket }: Cha
     }
   }
 
-  const getDocIcon = (type: string) => {
+  const getDocIcon = (type: string, sourceType?: string) => {
+    if (sourceType === 'external_web' || type === 'EXTERNAL_WEB') return <LanguageIcon style={{ color: '#F59E0B', fontSize: 15 }} />
     if (type === 'PDF') return <PictureAsPdfIcon style={{ color: '#EF4444', fontSize: 15 }} />
     if (type === 'DOCX') return <DescriptionIcon style={{ color: '#3B82F6', fontSize: 15 }} />
     if (type === 'RESOLVED_TICKET') return <CheckCircleIcon style={{ color: '#10B981', fontSize: 15 }} />
@@ -125,65 +129,77 @@ export default function ChatbotDrawer({ open, onClose, onOpenCreateTicket }: Cha
                 border: msg.sender === 'bot' ? '1px solid #334155' : 'none',
               }}
             >
-              <Typography variant="body2" style={{ whiteSpace: 'pre-line', lineHeight: 1.5 }}>
-                {msg.text}
-              </Typography>
+              {msg.sender === 'user' ? (
+                <Typography variant="body2" style={{ whiteSpace: 'pre-line', lineHeight: 1.5 }}>
+                  {msg.text}
+                </Typography>
+              ) : (
+                <Box sx={{ '& p': { mb: 1, lineHeight: 1.5 }, '& h3': { mt: 1.5, mb: 1, fontSize: '0.95rem', fontWeight: 700 } }}>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {msg.text ? msg.text.replace(/\\n/g, '\n') : ''}
+                  </ReactMarkdown>
+                </Box>
+              )}
 
               {/* Source Articles & Citations */}
               {msg.sources && msg.sources.length > 0 && (
                 <Box mt={2} pt={1.5} borderTop="1px solid #334155">
-                  <Typography variant="caption" style={{ color: '#94A3B8', fontWeight: 800, display: 'block', marginBottom: 8 }}>
-                    VERIFIED CITATIONS & DOWNLOADABLE DOCS:
+                  <Typography variant="caption" style={{ color: '#94A3B8', fontWeight: 700, display: 'block', marginBottom: 8 }}>
+                    Sources
                   </Typography>
                   <Box display="flex" flexDirection="column" gap={1.2}>
-                    {msg.sources.map((src, idx) => (
-                      <Paper key={idx} sx={{ p: 1.5, bgcolor: '#0F172A', border: '1px solid #334155', borderRadius: 2 }}>
-                        <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
-                          <Box display="flex" alignItems="center" gap={0.8}>
-                            {getDocIcon(src.document_type)}
-                            <Typography variant="caption" fontWeight={700} style={{ color: '#60A5FA' }}>
-                              {src.title}
-                            </Typography>
+                    {msg.sources.map((src, idx) => {
+                      const isExternalWeb = src.source_type === 'external_web' || src.document_type === 'EXTERNAL_WEB'
+                      return (
+                        <Paper key={idx} sx={{ p: 1.5, bgcolor: isExternalWeb ? '#451A03' : '#0F172A', border: isExternalWeb ? '1px solid #92400E' : '1px solid #334155', borderRadius: 2 }}>
+                          <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
+                            <Box display="flex" alignItems="center" gap={0.8}>
+                              {getDocIcon(src.document_type, src.source_type)}
+                              <Typography variant="caption" fontWeight={700} style={{ color: isExternalWeb ? '#FBBF24' : '#60A5FA' }}>
+                                {src.title}
+                              </Typography>
+                            </Box>
+                            <Chip
+                              label={isExternalWeb ? `From ${src.domain || 'External Web'}, unverified` : (src.relevance_label || (src.similarity_score && src.similarity_score >= 0.50 ? 'High relevance' : 'Medium relevance'))}
+                              size="small"
+                              variant="outlined"
+                              style={{ fontSize: '0.65rem', height: 18, borderColor: isExternalWeb ? '#F59E0B' : '#334155', color: isExternalWeb ? '#FBBF24' : '#94A3B8', fontWeight: 600 }}
+                            />
                           </Box>
-                          <Chip
-                            label={`${src.relevance_pct || Math.round(src.similarity_score * 100)}% MATCH`}
-                            size="small"
-                            style={{ fontSize: '0.62rem', height: 18, backgroundColor: '#064E3B', color: '#34D399', fontWeight: 800 }}
-                          />
-                        </Box>
 
-                        <Typography variant="caption" style={{ color: '#94A3B8', display: 'block', marginBottom: 8 }}>
-                          {src.snippet}
-                        </Typography>
+                          <Typography variant="caption" style={{ color: '#94A3B8', display: 'block', marginBottom: 8 }}>
+                            {src.snippet}
+                          </Typography>
 
 
-                        <Box display="flex" justifyContent="space-between" alignItems="center" pt={0.5} borderTop="1px solid #1E293B">
-                          <Chip label={src.document_type || 'PDF'} size="small" style={{ fontSize: '0.62rem', height: 18, backgroundColor: '#1E293B', color: '#CBD5E1' }} />
+                          <Box display="flex" justifyContent="space-between" alignItems="center" pt={0.5} borderTop="1px solid #1E293B">
+                            <Chip label={isExternalWeb ? 'EXTERNAL WEB' : (src.document_type || 'PDF')} size="small" style={{ fontSize: '0.62rem', height: 18, backgroundColor: isExternalWeb ? '#78350F' : '#1E293B', color: isExternalWeb ? '#FEF3C7' : '#CBD5E1' }} />
 
-                          <Box display="flex" gap={1} alignItems="center">
-                            {src.download_url && (
-                              <Button
-                                variant="text"
-                                size="small"
-                                startIcon={<DownloadIcon style={{ fontSize: 13 }} />}
-                                href={src.download_url}
-                                target="_blank"
-                                style={{ color: '#60A5FA', fontSize: '0.7rem', padding: '1px 6px', fontWeight: 700 }}
-                              >
-                                Download
-                              </Button>
-                            )}
+                            <Box display="flex" gap={1} alignItems="center">
+                              {src.download_url && (
+                                <Button
+                                  variant="text"
+                                  size="small"
+                                  startIcon={isExternalWeb ? <OpenInNewIcon style={{ fontSize: 13 }} /> : <DownloadIcon style={{ fontSize: 13 }} />}
+                                  href={src.download_url}
+                                  target="_blank"
+                                  style={{ color: isExternalWeb ? '#F59E0B' : '#60A5FA', fontSize: '0.7rem', padding: '1px 6px', fontWeight: 700 }}
+                                >
+                                  {isExternalWeb ? 'Open Link' : 'Download'}
+                                </Button>
+                              )}
 
-                            <IconButton size="small" style={{ color: '#10B981', padding: 2 }} onClick={() => handleFeedback(src.id, true)}>
-                              <ThumbUpIcon style={{ fontSize: 12 }} />
-                            </IconButton>
-                            <IconButton size="small" style={{ color: '#EF4444', padding: 2 }} onClick={() => handleFeedback(src.id, false)}>
-                              <ThumbDownIcon style={{ fontSize: 12 }} />
-                            </IconButton>
+                              <IconButton size="small" style={{ color: '#10B981', padding: 2 }} onClick={() => handleFeedback(src.id, true)}>
+                                <ThumbUpIcon style={{ fontSize: 12 }} />
+                              </IconButton>
+                              <IconButton size="small" style={{ color: '#EF4444', padding: 2 }} onClick={() => handleFeedback(src.id, false)}>
+                                <ThumbDownIcon style={{ fontSize: 12 }} />
+                              </IconButton>
+                            </Box>
                           </Box>
-                        </Box>
-                      </Paper>
-                    ))}
+                        </Paper>
+                      )
+                    })}
                   </Box>
                 </Box>
               )}

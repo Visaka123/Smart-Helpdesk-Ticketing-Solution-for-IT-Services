@@ -251,7 +251,7 @@ export default function EmployeeTicketDetailsModal({
 
             {/* Description Box */}
             <Paper elevation={0} sx={{ p: 2, bgcolor: theme.palette.mode === 'dark' ? '#0F172A' : '#F8FAFC', border: `1px solid ${theme.palette.divider}`, borderRadius: 2 }}>
-              <Typography variant="caption" fontWeight={700} style={{ color: theme.palette.text.secondary, display: 'block', mb: 0.5 }}>
+              <Typography variant="caption" fontWeight={700} sx={{ color: theme.palette.text.secondary, display: 'block', mb: 0.5 }}>
                 DESCRIPTION
               </Typography>
               <Typography variant="body2" style={{ whiteSpace: 'pre-line', lineHeight: 1.6 }}>
@@ -277,7 +277,7 @@ export default function EmployeeTicketDetailsModal({
             {/* Satisfaction Rating Section for Resolved Tickets */}
             {isResolvedOrClosed && (
               <Paper elevation={0} sx={{ p: 2, bgcolor: theme.palette.mode === 'dark' ? '#1E293B' : '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 2 }}>
-                <Typography variant="subtitle2" fontWeight={700} style={{ color: '#1E40AF', mb: 1 }}>
+                <Typography variant="subtitle2" fontWeight={700} sx={{ color: '#1E40AF', mb: 1 }}>
                   How satisfied were you with this resolution?
                 </Typography>
                 <Box display="flex" alignItems="center" gap={2} mb={1}>
@@ -360,7 +360,7 @@ export default function EmployeeTicketDetailsModal({
             {/* Related KB Articles & SOP Guides */}
             {ticket.suggested_kb_articles && ticket.suggested_kb_articles.length > 0 && (
               <Box pt={1}>
-                <Typography variant="caption" fontWeight={800} style={{ color: theme.palette.text.secondary, display: 'block', mb: 1 }}>
+                <Typography variant="caption" fontWeight={700} sx={{ color: theme.palette.text.secondary, display: 'block', mb: 1.5 }}>
                   RECOMMENDED HELPDESK GUIDES & DOWNLOADS:
                 </Typography>
                 <Box display="flex" flexDirection="column" gap={1}>
@@ -407,7 +407,7 @@ export default function EmployeeTicketDetailsModal({
                   </Button>
                 ) : (
                   <Paper elevation={0} sx={{ p: 2, bgcolor: theme.palette.mode === 'dark' ? '#1E293B' : '#FFFBEB', border: '1px solid #F59E0B', borderRadius: 2 }}>
-                    <Typography variant="subtitle2" fontWeight={700} style={{ color: '#D97706', mb: 1 }}>
+                    <Typography variant="subtitle2" fontWeight={700} sx={{ color: '#D97706', mb: 1 }}>
                       Reopen Support Ticket
                     </Typography>
                     <TextField

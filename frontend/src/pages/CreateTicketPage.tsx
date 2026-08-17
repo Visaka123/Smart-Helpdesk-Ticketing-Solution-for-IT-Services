@@ -3,28 +3,27 @@ import {
   Box,
   Typography,
   Card,
+  CardContent,
   TextField,
   Button,
   Grid,
   Chip,
   Paper,
-  CircularProgress,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
   Alert,
+  Divider,
   useTheme,
+  Stack,
 } from '@mui/material'
-import SmartToyIcon from '@mui/icons-material/SmartToy'
 import SendIcon from '@mui/icons-material/Send'
-import CheckCircleIcon from '@mui/icons-material/CheckCircle'
+import CancelIcon from '@mui/icons-material/Cancel'
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
 import LockIcon from '@mui/icons-material/Lock'
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import GroupIcon from '@mui/icons-material/Group'
+import AccessTimeIcon from '@mui/icons-material/AccessTime'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 
@@ -35,37 +34,24 @@ export default function CreateTicketPage() {
   const theme = useTheme()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [category, setCategory] = useState('General IT')
   const [department, setDepartment] = useState('Finance')
   const [requesterName, setRequesterName] = useState('Alice Employee')
-
-  const [routingPreview, setRoutingPreview] = useState<any>(null)
-  const [previewLoading, setPreviewLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+
+  // Interstitial Modal State
+  const [interstitialOpen, setInterstitialOpen] = useState(false)
+  const [interstitialMatch, setInterstitialMatch] = useState<any>(null)
+  const [interstitialType, setInterstitialType] = useState<'open' | 'resolved' | null>(null)
 
   // Hard Block Modal State
   const [blockDialogOpen, setBlockDialogOpen] = useState(false)
   const [blockData, setBlockData] = useState<any>(null)
 
-  const handleDescBlur = async () => {
-    if (description.trim().length < 15) return
-    try {
-      setPreviewLoading(true)
-      const res = await axios.post(`${API_BASE}/ticket/route-ticket`, { description })
-      setRoutingPreview(res.data)
-    } catch (e) {
-      console.error('Error fetching ML routing preview:', e)
-    } finally {
-      setPreviewLoading(false)
-    }
-  }
+  // Ticket Created Confirmation Modal
+  const [successDialogOpen, setSuccessDialogOpen] = useState(false)
+  const [createdTicket, setCreatedTicket] = useState<any>(null)
 
-  const handleSubmit = async () => {
-    if (!title.trim() || !description.trim()) {
-      alert('Please fill in both title and description.')
-      return
-    }
-
+  const executeCreateTicket = async (forceSkipCheck = false) => {
     setSubmitting(true)
     try {
       const token = localStorage.getItem('token')
@@ -85,10 +71,9 @@ export default function CreateTicketPage() {
       const res = await axios.post(`${API_BASE}/ticket/create`, {
         title,
         description,
-        category,
         requester_name: requesterName,
         requester_department: department,
-        skip_duplicate_check: false,
+        skip_duplicate_check: forceSkipCheck,
       }, { headers })
 
       if (res.data.is_hard_blocked) {
@@ -98,156 +83,468 @@ export default function CreateTicketPage() {
         return
       }
 
-      alert('Ticket created successfully! ML routed to: ' + res.data.ticket.predicted_team)
-      navigate('/dashboard')
+      setCreatedTicket(res.data.ticket || res.data)
+      setSuccessDialogOpen(true)
     } catch (err) {
-      console.error(err)
-      alert('Error creating ticket')
+      console.error('Error submitting ticket:', err)
+      alert('Failed to submit ticket. Please try again.')
     } finally {
       setSubmitting(false)
     }
   }
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!title.trim() || !description.trim()) {
+      alert('Please enter both ticket title and description.')
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      const token = localStorage.getItem('token')
+      const storedUser = localStorage.getItem('user')
+      const headers: any = {}
+      if (token) headers['Authorization'] = `Bearer ${token}`
+      if (storedUser) {
+        try {
+          const u = JSON.parse(storedUser)
+          headers['X-User-Id'] = String(u.id)
+          headers['X-User-Role'] = u.role || 'employee'
+          headers['X-User-Email'] = u.email
+          headers['X-User-Name'] = u.name
+        } catch (e) {}
+      }
+
+      // 1. Run Pre-Submission Duplicate Check using backend RAG similarity matcher
+      const dupRes = await axios.post(`${API_BASE}/ticket/check-duplicate`, {
+        title,
+        description,
+      }, { headers })
+
+      const data = dupRes.data
+      if (data && data.has_duplicate && data.top_match) {
+        const match = data.top_match
+        if (data.has_resolved_match && (match.status === 'resolved' || match.status === 'closed')) {
+          setInterstitialMatch(match)
+          setInterstitialType('resolved')
+          setInterstitialOpen(true)
+          setSubmitting(false)
+          return
+        } else if (data.has_open_match) {
+          setInterstitialMatch(match)
+          setInterstitialType('open')
+          setInterstitialOpen(true)
+          setSubmitting(false)
+          return
+        }
+      }
+
+      // No match above threshold -> submit immediately
+      await executeCreateTicket(false)
+    } catch (err) {
+      console.error('Error checking duplicate ticket:', err)
+      await executeCreateTicket(false)
+    }
+  }
+
   return (
-    <Box maxWidth={900} mx="auto">
-      <Box mb={3}>
-        <Typography variant="h2" fontWeight={800}>
-          Submit Support Request
-        </Typography>
-        <Typography variant="body2" style={{ color: theme.palette.text.secondary }}>
-          Hybrid Semantic + Lexical Duplicate Prevention Engine & Hard-Block Auto-Linking.
-        </Typography>
-      </Box>
+    <Box maxWidth={720} mx="auto" py={3}>
+      <Paper
+        elevation={0}
+        sx={{
+          p: 4,
+          bgcolor: 'background.paper',
+          border: `1px solid ${theme.palette.divider}`,
+          borderRadius: 3,
+          boxShadow: theme.palette.mode === 'light' ? '0 4px 20px rgba(0, 0, 0, 0.05)' : 'none',
+        }}
+      >
+        <Box mb={3.5}>
+          <Typography variant="h4" fontWeight={800} color="text.primary" gutterBottom>
+            Create Support Ticket
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Submit an IT service request or report an issue. Your ticket will be automatically classified and routed to the appropriate support team.
+          </Typography>
+        </Box>
 
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={7}>
-          <Paper sx={{ p: 3, bgcolor: 'background.paper', border: `1px solid ${theme.palette.divider}`, borderRadius: 2 }}>
-            <Box display="flex" flexDirection="column" gap={2.5}>
-              <Grid container spacing={2}>
-                <Grid item xs={6}>
-                  <TextField
-                    label="Your Name / User"
-                    fullWidth
-                    value={requesterName}
-                    onChange={(e) => setRequesterName(e.target.value)}
-                    placeholder="e.g. Alice Employee"
-                  />
-                </Grid>
-                <Grid item xs={6}>
-                  <TextField
-                    select
-                    label="Your Department"
-                    fullWidth
-                    value={department}
-                    onChange={(e) => setDepartment(e.target.value)}
-                    SelectProps={{ native: true }}
-                  >
-                    <option value="Finance">Finance</option>
-                    <option value="Sales">Sales</option>
-                    <option value="Engineering">Engineering</option>
-                    <option value="Human Resources">Human Resources</option>
-                  </TextField>
-                </Grid>
+        <form onSubmit={handleSubmit}>
+          <Stack spacing={3}>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Requester Name"
+                  fullWidth
+                  required
+                  value={requesterName}
+                  onChange={(e) => setRequesterName(e.target.value)}
+                  placeholder="e.g. Alice Employee"
+                  variant="outlined"
+                />
               </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  select
+                  label="Department"
+                  fullWidth
+                  required
+                  value={department}
+                  onChange={(e) => setDepartment(e.target.value)}
+                  SelectProps={{ native: true }}
+                  variant="outlined"
+                >
+                  <option value="Finance">Finance</option>
+                  <option value="Sales">Sales</option>
+                  <option value="Engineering">Engineering</option>
+                  <option value="Human Resources">Human Resources</option>
+                </TextField>
+              </Grid>
+            </Grid>
 
-              <TextField
-                label="Ticket Title / Subject"
-                fullWidth
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. SAP Transaction SU53 Permission Error"
-              />
+            <TextField
+              label="Ticket Title"
+              fullWidth
+              required
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Unable to access financial reporting portal"
+              variant="outlined"
+            />
 
-              <TextField
-                select
-                label="Category"
-                fullWidth
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                SelectProps={{ native: true }}
-              >
-                <option value="General IT">General IT</option>
-                <option value="Network">Network & VPN</option>
-                <option value="Database">Database & Storage</option>
-                <option value="SAP Support">SAP & ERP</option>
-                <option value="Security">Security & Access</option>
-                <option value="HR Support">HR Systems</option>
-              </TextField>
+            <TextField
+              label="Detailed Description"
+              fullWidth
+              required
+              multiline
+              rows={5}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Please provide details about the issue, including error messages, steps to reproduce, or impacted systems..."
+              variant="outlined"
+            />
 
-              <TextField
-                label="Detailed Description"
-                fullWidth
-                multiline
-                rows={5}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                onBlur={handleDescBlur}
-                placeholder="Describe your issue in detail..."
-              />
+            <Divider sx={{ my: 1 }} />
 
+            <Box display="flex" justifyContent="flex-end" gap={2}>
               <Button
-                variant="contained"
-                size="large"
+                variant="outlined"
+                color="inherit"
+                onClick={() => navigate('/tickets')}
+                startIcon={<CancelIcon />}
                 disabled={submitting}
-                onClick={handleSubmit}
-                startIcon={<SendIcon />}
-                style={{ backgroundColor: '#2563EB', padding: '10px 16px', fontWeight: 700 }}
+                sx={{ px: 3, py: 1, fontWeight: 700 }}
               >
-                {submitting ? 'Checking Duplicates...' : 'Submit Request'}
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="contained"
+                disabled={submitting}
+                startIcon={<SendIcon />}
+                sx={{
+                  px: 4,
+                  py: 1,
+                  fontWeight: 700,
+                  bgcolor: '#2563EB',
+                  '&:hover': { bgcolor: '#1D4ED8' },
+                }}
+              >
+                {submitting ? 'Submitting...' : 'Submit Ticket'}
               </Button>
             </Box>
-          </Paper>
-        </Grid>
+          </Stack>
+        </form>
+      </Paper>
 
-        {/* Real-time ML Preview */}
-        <Grid item xs={12} md={5}>
-          <Paper sx={{ p: 3, bgcolor: theme.palette.mode === 'light' ? '#F8FAFC' : '#0F172A', border: `1px solid ${theme.palette.divider}`, borderRadius: 2 }}>
-            <Box display="flex" alignItems="center" gap={1} mb={2}>
-              <SmartToyIcon style={{ color: '#2563EB' }} />
-              <Typography variant="h6" fontWeight={700}>
-                Hybrid ML Duplicate Protection
+      {/* COMPACT PROFESSIONAL CREATION SUCCESS DIALOG */}
+      {createdTicket && (
+        <Dialog
+          open={successDialogOpen}
+          onClose={() => setSuccessDialogOpen(false)}
+          maxWidth="xs"
+          fullWidth
+          PaperProps={{
+            sx: { borderRadius: 3, p: 1 },
+          }}
+        >
+          <DialogTitle sx={{ pb: 1, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <CheckCircleOutlineIcon sx={{ color: '#10B981', fontSize: 32 }} />
+            <Box>
+              <Typography variant="h6" fontWeight={800} color="text.primary">
+                Ticket Created Successfully
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Ticket ID: #{createdTicket.id}
               </Typography>
             </Box>
+          </DialogTitle>
 
-            {previewLoading ? (
-              <Box display="flex" alignItems="center" gap={1} py={3}>
-                <CircularProgress size={20} style={{ color: '#2563EB' }} />
-                <Typography variant="caption" style={{ color: theme.palette.text.secondary }}>
-                  Computing hybrid semantic embeddings + lexical keyword overlap...
-                </Typography>
-              </Box>
-            ) : routingPreview ? (
-              <Box display="flex" flexDirection="column" gap={2}>
-                <Box>
-                  <Typography variant="caption" style={{ color: theme.palette.text.secondary, fontWeight: 700 }}>
-                    PREDICTED TEAM ROUTING:
+          <DialogContent sx={{ py: 2 }}>
+            <Paper
+              variant="outlined"
+              sx={{ p: 2.5, bgcolor: theme.palette.mode === 'light' ? '#F8FAFC' : '#0F172A', borderRadius: 2 }}
+            >
+              <Stack spacing={1.8}>
+                <Box display="flex" justifyContent="space-between" alignItems="center">
+                  <Typography variant="body2" color="text.secondary" fontWeight={600}>
+                    Category
                   </Typography>
-                  <Box display="flex" alignItems="center" gap={1} mt={0.5}>
-                    <Chip
-                      label={routingPreview.predicted_team}
-                      color={routingPreview.is_low_confidence ? 'warning' : 'primary'}
-                      style={{ fontWeight: 800 }}
-                    />
-                    <Typography variant="caption" style={{ color: '#10B981', fontWeight: 700 }}>
-                      {routingPreview.confidence ? Math.round(routingPreview.confidence * 100) + '%' : 'Triage'} Confidence
+                  <Typography variant="body2" fontWeight={800} color="primary.main">
+                    {createdTicket.category || createdTicket.predicted_category || 'Hardware'}
+                  </Typography>
+                </Box>
+
+                <Divider light />
+
+                <Box display="flex" justifyContent="space-between" alignItems="center">
+                  <Typography variant="body2" color="text.secondary" fontWeight={600}>
+                    Assigned Team
+                  </Typography>
+                  <Typography variant="body2" fontWeight={800} color="text.primary">
+                    {createdTicket.assigned_team || createdTicket.predicted_team || 'General Support'}
+                  </Typography>
+                </Box>
+
+                <Divider light />
+
+                <Box display="flex" justifyContent="space-between" alignItems="center">
+                  <Typography variant="body2" color="text.secondary" fontWeight={600}>
+                    Priority
+                  </Typography>
+                  <Chip
+                    label={createdTicket.priority || 'Medium'}
+                    size="small"
+                    color={
+                      createdTicket.priority === 'Critical'
+                        ? 'error'
+                        : createdTicket.priority === 'High'
+                        ? 'warning'
+                        : 'primary'
+                    }
+                    sx={{ fontWeight: 800, height: 24 }}
+                  />
+                </Box>
+
+                <Divider light />
+
+                <Box display="flex" justifyContent="space-between" alignItems="center">
+                  <Typography variant="body2" color="text.secondary" fontWeight={600}>
+                    SLA Target
+                  </Typography>
+                  <Box display="flex" alignItems="center" gap={0.5}>
+                    <AccessTimeIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                    <Typography variant="body2" fontWeight={800} color="text.primary">
+                      {createdTicket.sla_hours ? `${createdTicket.sla_hours} hours` : '24 hours'}
                     </Typography>
                   </Box>
                 </Box>
-              </Box>
+              </Stack>
+            </Paper>
+          </DialogContent>
+
+          <DialogActions sx={{ p: 2, pt: 1 }}>
+            <Button
+              variant="contained"
+              fullWidth
+              onClick={() => {
+                setSuccessDialogOpen(false)
+                navigate('/dashboard')
+              }}
+              sx={{ bgcolor: '#2563EB', fontWeight: 700, py: 1 }}
+            >
+              Return to Dashboard
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
+
+      {/* PRE-SUBMISSION SIMILARITY INTERSTITIAL DIALOG */}
+      {interstitialMatch && (
+        <Dialog
+          open={interstitialOpen}
+          onClose={() => setInterstitialOpen(false)}
+          maxWidth="sm"
+          fullWidth
+          PaperProps={{ sx: { borderRadius: 3 } }}
+        >
+          <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pb: 1 }}>
+            {interstitialType === 'resolved' ? (
+              <CheckCircleOutlineIcon sx={{ color: '#059669', fontSize: 28 }} />
             ) : (
-              <Typography variant="body2" style={{ color: theme.palette.text.secondary }}>
-                Enter your request details. Our hybrid engine prevents duplicate tickets by linking you directly to existing open issues or surfacing verified solutions.
-              </Typography>
+              <GroupIcon sx={{ color: '#D97706', fontSize: 28 }} />
             )}
-          </Paper>
-        </Grid>
-      </Grid>
+            <Box>
+              <Typography variant="h6" fontWeight={800} color="text.primary">
+                {interstitialType === 'resolved'
+                  ? 'Similar Resolved Issue Found'
+                  : 'Similar Open Incident In Progress'}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Matched against existing Ticket #{interstitialMatch.ticket_id} (Relevance:{' '}
+                {Math.round((interstitialMatch.semantic_score || 0.85) * 100)}%)
+              </Typography>
+            </Box>
+          </DialogTitle>
+
+          <DialogContent sx={{ py: 2 }}>
+            {interstitialType === 'resolved' ? (
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: 2.5,
+                  bgcolor: theme.palette.mode === 'light' ? '#ECFDF5' : '#064E3B',
+                  borderColor: '#A7F3D0',
+                  borderRadius: 2.5,
+                }}
+              >
+                <Box display="flex" alignItems="center" gap={1} mb={1}>
+                  <CheckCircleOutlineIcon sx={{ color: '#059669', fontSize: 20 }} />
+                  <Typography variant="subtitle2" fontWeight={800} sx={{ color: '#065F46' }}>
+                    Official Verified Solution — Ticket #{interstitialMatch.ticket_id}
+                  </Typography>
+                </Box>
+                <Typography variant="body2" fontWeight={700} sx={{ color: '#047857', mb: 1 }}>
+                  {interstitialMatch.title}
+                </Typography>
+                <Divider sx={{ my: 1.5, borderColor: '#A7F3D0' }} />
+                <Typography variant="caption" fontWeight={800} sx={{ color: '#065F46', display: 'block', mb: 0.5 }}>
+                  RECOMMENDED RESOLUTION SUMMARY:
+                </Typography>
+                <Typography variant="body2" sx={{ color: '#064E3B', lineHeight: 1.6, whiteSpace: 'pre-line' }}>
+                  {interstitialMatch.resolution_summary || 'Verified fix applied by operations.'}
+                </Typography>
+                {interstitialMatch.resolution_detail && (
+                  <Typography variant="caption" sx={{ color: '#047857', display: 'block', mt: 1, fontStyle: 'italic' }}>
+                    {interstitialMatch.resolution_detail}
+                  </Typography>
+                )}
+              </Paper>
+            ) : (
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: 2.5,
+                  bgcolor: theme.palette.mode === 'light' ? '#FFFBEB' : '#451A03',
+                  borderColor: '#FDE68A',
+                  borderRadius: 2.5,
+                }}
+              >
+                <Box display="flex" alignItems="center" gap={1} mb={1}>
+                  <GroupIcon sx={{ color: '#D97706', fontSize: 20 }} />
+                  <Typography variant="subtitle2" fontWeight={800} sx={{ color: '#92400E' }}>
+                    Active Incident Already In Progress — Ticket #{interstitialMatch.ticket_id}
+                  </Typography>
+                </Box>
+                <Typography variant="body2" fontWeight={700} sx={{ color: '#B45309', mb: 1 }}>
+                  {interstitialMatch.title}
+                </Typography>
+                <Box display="flex" gap={1} my={1.5}>
+                  <Chip
+                    label={`Status: ${String(interstitialMatch.status).toUpperCase()}`}
+                    size="small"
+                    style={{ backgroundColor: '#FEF3C7', color: '#B45309', fontWeight: 800 }}
+                  />
+                  <Chip
+                    label={`Team: ${interstitialMatch.assigned_team || 'IT Support'}`}
+                    size="small"
+                    style={{ backgroundColor: '#EFF6FF', color: '#2563EB', fontWeight: 800 }}
+                  />
+                </Box>
+                <Typography variant="caption" color="text.secondary" display="block">
+                  {interstitialMatch.description}
+                </Typography>
+                {!interstitialMatch.is_own_ticket && (
+                  <Alert severity="info" icon={false} sx={{ mt: 1.5, py: 0.5, px: 1.5, fontSize: '0.78rem', borderRadius: 1.5 }}>
+                    This incident was reported by another employee. Support is actively resolving it org-wide.
+                  </Alert>
+                )}
+              </Paper>
+            )}
+          </DialogContent>
+
+          <DialogActions sx={{ p: 2.5, pt: 1, gap: 1.5, flexWrap: 'wrap' }}>
+            {interstitialType === 'resolved' ? (
+              <>
+                <Button
+                  variant="contained"
+                  color="success"
+                  fullWidth
+                  onClick={() => {
+                    setInterstitialOpen(false)
+                    navigate('/dashboard')
+                  }}
+                  sx={{ fontWeight: 800, py: 1.25 }}
+                >
+                  This solves my issue
+                </Button>
+                <Button
+                  variant="outlined"
+                  color="inherit"
+                  fullWidth
+                  onClick={() => {
+                    setInterstitialOpen(false)
+                    executeCreateTicket(true)
+                  }}
+                  sx={{ fontWeight: 700, textTransform: 'none' }}
+                >
+                  Still create a ticket
+                </Button>
+              </>
+            ) : (
+              <>
+                {interstitialMatch.is_own_ticket ? (
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    onClick={() => {
+                      const ticketId = interstitialMatch?.ticket_id || interstitialMatch?.id
+                      setInterstitialOpen(false)
+                      if (ticketId) {
+                        navigate(`/tickets?open=${ticketId}`, { state: { openTicketId: ticketId } })
+                      } else {
+                        navigate('/tickets')
+                      }
+                    }}
+                    sx={{ bgcolor: '#2563EB', fontWeight: 800, py: 1.25 }}
+                  >
+                    View my existing ticket
+                  </Button>
+                ) : (
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    onClick={() => {
+                      setInterstitialOpen(false)
+                    }}
+                    sx={{ bgcolor: '#2563EB', fontWeight: 800, py: 1.25 }}
+                  >
+                    Got it, already tracked
+                  </Button>
+                )}
+                <Button
+                  variant="outlined"
+                  color="inherit"
+                  fullWidth
+                  onClick={() => {
+                    setInterstitialOpen(false)
+                    executeCreateTicket(true)
+                  }}
+                  sx={{ fontWeight: 700, textTransform: 'none' }}
+                >
+                  This is different, create anyway
+                </Button>
+              </>
+            )}
+          </DialogActions>
+        </Dialog>
+      )}
 
       {/* HARD BLOCK DUPLICATE MODAL */}
       {blockData && (
-        <Dialog open={blockDialogOpen} onClose={() => setBlockDialogOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { bgcolor: 'background.paper' } }}>
-          <DialogTitle style={{ display: 'flex', alignItems: 'center', gap: 8, color: blockData.block_type === 'open_ticket_linked' ? '#D97706' : '#10B981' }}>
-            <LockIcon style={{ color: blockData.block_type === 'open_ticket_linked' ? '#D97706' : '#10B981' }} />
+        <Dialog open={blockDialogOpen} onClose={() => setBlockDialogOpen(false)} maxWidth="sm" fullWidth>
+          <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1, color: blockData.block_type === 'open_ticket_linked' ? '#D97706' : '#10B981' }}>
+            <LockIcon sx={{ color: blockData.block_type === 'open_ticket_linked' ? '#D97706' : '#10B981' }} />
             {blockData.block_type === 'open_ticket_linked' ? 'Duplicate Prevented — Linked to Open Incident' : 'Issue Already Resolved!'}
           </DialogTitle>
           <DialogContent>
@@ -257,75 +554,33 @@ export default function CreateTicketPage() {
                   <Typography variant="subtitle2" fontWeight={800}>
                     {blockData.message}
                   </Typography>
-                  <Typography variant="caption" style={{ display: 'block', marginTop: 4 }}>
+                  <Typography variant="caption" display="block" sx={{ mt: 0.5 }}>
                     No duplicate ticket was created. You have been added as a linked requester on Ticket #{blockData.ticket.id} (Total linked users: {blockData.ticket.requester_count}).
                   </Typography>
                 </Alert>
-                <Paper sx={{ p: 2, bgcolor: theme.palette.mode === 'light' ? '#FEF3C7' : '#2A1B14', border: '1px solid #FDE68A', borderRadius: 2 }}>
-                  <Typography variant="caption" fontWeight={700} style={{ color: '#B45309' }}>SHARED MASTER TICKET #{blockData.ticket.id}:</Typography>
-                  <Typography variant="body2" fontWeight={700} style={{ marginTop: 4 }}>{blockData.ticket.title}</Typography>
-                  <Typography variant="caption" style={{ color: theme.palette.text.secondary, display: 'block', marginTop: 4 }}>
-                    Status: {blockData.ticket.status.toUpperCase()} | Assigned Team: {blockData.ticket.assigned_team}
-                  </Typography>
-                </Paper>
               </Box>
             ) : (
               <Box>
-                {/* Resolved ticket — prominent banner */}
-                <Box sx={{ bgcolor: '#ECFDF5', border: '2px solid #10B981', borderRadius: 2, p: 2, mb: 2, display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
-                  <CheckCircleIcon style={{ color: '#10B981', fontSize: 32, marginTop: 2 }} />
-                  <Box>
-                    <Typography variant="subtitle1" fontWeight={800} style={{ color: '#065F46' }}>
-                      This issue has already been resolved!
-                    </Typography>
-                    <Typography variant="body2" style={{ color: '#047857', marginTop: 2 }}>
-                      Ticket #{blockData.ticket.id} — <strong>{blockData.ticket.title}</strong>
-                    </Typography>
-                    <Typography variant="caption" style={{ color: '#6B7280', display: 'block', marginTop: 2 }}>
-                      No new ticket was created. The verified fix is shown below.
-                    </Typography>
-                  </Box>
-                </Box>
-
-                <Paper sx={{ p: 2.5, bgcolor: theme.palette.mode === 'light' ? '#F0FDF4' : '#052e16', border: '1px solid #A7F3D0', borderRadius: 2 }}>
-                  <Typography variant="overline" fontWeight={700} style={{ color: '#047857', letterSpacing: 1 }}>
-                    Verified Resolution
+                <Alert severity="success" icon={<CheckCircleOutlineIcon fontSize="small" />} sx={{ mb: 2 }}>
+                  <Typography variant="subtitle2" fontWeight={800}>
+                    This issue was already resolved — Ticket #{blockData.ticket.id}
                   </Typography>
-                  <Typography variant="body1" style={{ color: theme.palette.mode === 'light' ? '#1E293B' : '#d1fae5', whiteSpace: 'pre-line', marginTop: 8, lineHeight: 1.7 }}>
-                    {blockData.ticket.resolution_summary || 'Resolution details are available from the support team.'}
+                  <Typography variant="body2" sx={{ mt: 1 }}>
+                    {blockData.ticket.resolution_summary}
                   </Typography>
-
-                  {blockData.ticket.resolution_detail && (
-                    <Accordion sx={{ bgcolor: 'transparent', boxShadow: 'none', mt: 1.5, border: '1px solid #A7F3D0', borderRadius: '8px !important' }}>
-                      <AccordionSummary expandIcon={<ExpandMoreIcon fontSize="small" />}>
-                        <Typography variant="caption" style={{ color: '#2563EB', fontWeight: 700 }}>
-                          View Technical Steps & Fix Details
-                        </Typography>
-                      </AccordionSummary>
-                      <AccordionDetails>
-                        <Typography variant="caption" style={{ fontFamily: 'monospace', whiteSpace: 'pre-line', color: theme.palette.mode === 'light' ? '#1E293B' : '#d1fae5', lineHeight: 1.8 }}>
-                          {blockData.ticket.resolution_detail}
-                        </Typography>
-                      </AccordionDetails>
-                    </Accordion>
-                  )}
-                </Paper>
-
-                <Typography variant="caption" style={{ color: '#9CA3AF', display: 'block', marginTop: 8, textAlign: 'center' }}>
-                  Resolved by: {blockData.ticket.assigned_team || 'Support Team'}
-                </Typography>
+                </Alert>
               </Box>
             )}
           </DialogContent>
-          <DialogActions style={{ padding: 16 }}>
+          <DialogActions sx={{ p: 2 }}>
             <Button
               variant="contained"
-              style={{ backgroundColor: '#2563EB', fontWeight: 700 }}
               fullWidth
               onClick={() => {
                 setBlockDialogOpen(false)
                 navigate('/dashboard')
               }}
+              sx={{ bgcolor: '#2563EB', fontWeight: 700 }}
             >
               Return to Dashboard
             </Button>
