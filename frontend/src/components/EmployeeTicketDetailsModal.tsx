@@ -16,7 +16,7 @@ import axios from 'axios'
 
 import { PriorityBadge, StatusBadge } from './ui/SemanticBadges'
 
-const API_BASE = 'http://localhost:8000'
+const API_BASE = import.meta.env.VITE_API_BASE ?? ''
 
 interface EmployeeTicketDetailsModalProps {
   ticketId: number | null

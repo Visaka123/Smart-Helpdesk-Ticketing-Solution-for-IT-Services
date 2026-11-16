@@ -12,6 +12,7 @@ from app.sla.service import calculate_sla_due_at, audit_and_trigger_sla_escalati
 from app.duplicate.service import detect_hybrid_duplicates, record_duplicate_feedback
 from app.chatbot.service import RAG_chatbot_query
 from app.auth.rbac import get_current_user_from_headers
+from app.availability.service import assign_agent_for_ticket
 
 router = APIRouter()
 
@@ -22,6 +23,7 @@ class TicketCreateRequest(BaseModel):
     requester_name: Optional[str] = "Alice Employee"
     requester_department: Optional[str] = "Finance"
     skip_duplicate_check: Optional[bool] = False
+    is_demo: Optional[bool] = False
 
 class RouteTicketRequest(BaseModel):
     title: Optional[str] = ""
@@ -249,6 +251,8 @@ def create_ticket(req: TicketCreateRequest, request: Request):
     now_dt = datetime.now()
     sla_hours = round((sla_due - now_dt).total_seconds() / 3600.0, 1)
 
+    is_demo_ticket = bool(getattr(req, "is_demo", False) or "[demo]" in req.title.lower() or "[demo]" in req.description.lower())
+
     ticket = Ticket(
         title=req.title,
         description=req.description,
@@ -265,11 +269,29 @@ def create_ticket(req: TicketCreateRequest, request: Request):
         requester_department=req_dept,
         created_at=now_dt,
         sla_due_at=sla_due,
+        is_demo=is_demo_ticket,
     )
 
     db.add(ticket)
     db.commit()
     db.refresh(ticket)
+
+    # ── Availability-aware agent assignment (B6: graceful degradation) ────
+    try:
+        chosen_agent, assignment_reason = assign_agent_for_ticket(ticket, assigned_team, db)
+        if chosen_agent:
+            ticket.assigned_agent_name = chosen_agent.name
+            ticket.assigned_agent_id   = chosen_agent.id
+            ticket.status = "assigned"
+    except Exception as _avail_err:
+        import logging
+        logging.getLogger(__name__).error(
+            "[AVAILABILITY] assign_agent_for_ticket failed for ticket #%s: %s — "
+            "falling back to original routing assignment.",
+            ticket.id, _avail_err
+        )
+        # ticket retains the team assigned by LLM routing; agent stays unset
+    db.commit()
 
     if is_triage:
         log = SLAEscalationLog(
@@ -307,6 +329,7 @@ def create_ticket(req: TicketCreateRequest, request: Request):
             "created_at": str(ticket.created_at),
             "sla_due_at": str(ticket.sla_due_at),
             "sla_hours": sla_hours,
+            "is_demo": bool(ticket.is_demo),
         },
         "message": "Ticket created successfully and classified by Single-Pass LLM Dispatcher.",
     }
@@ -411,6 +434,7 @@ def get_all_tickets(request: Request):
                 "resolved_at": str(t.resolved_at) if t.resolved_at else None,
                 "resolution_summary": t.resolution_summary or t.resolution_notes,
                 "satisfaction_rating": t.satisfaction_rating,
+                "is_demo": bool(t.is_demo),
             })
         else:
             # Agent / Manager Full View
@@ -441,6 +465,7 @@ def get_all_tickets(request: Request):
                 "created_at": str(t.created_at) if t.created_at else None,
                 "sla_due_at": str(t.sla_due_at) if t.sla_due_at else None,
                 "sla_badge": sla_badge,
+                "is_demo": bool(t.is_demo),
             })
 
     db.close()
@@ -472,6 +497,7 @@ def get_my_tickets(request: Request):
                     "resolved_at": str(t.resolved_at) if t.resolved_at else None,
                     "resolution_summary": t.resolution_summary or t.resolution_notes,
                     "satisfaction_rating": t.satisfaction_rating,
+                    "is_demo": bool(t.is_demo),
                 })
 
     db.close()
@@ -668,11 +694,14 @@ def rate_ticket_endpoint(ticket_id: int, req: EmployeeRatingRequest, request: Re
     return {"message": "Satisfaction rating submitted successfully", "rating": req.rating}
 
 @router.get("/stats")
-def get_ticket_stats():
+def get_ticket_stats(include_demo: bool = True):
     db = SessionLocal()
     audit_and_trigger_sla_escalations()
 
-    all_t = db.query(Ticket).all()
+    query = db.query(Ticket)
+    if not include_demo:
+        query = query.filter((Ticket.is_demo == False) | (Ticket.is_demo == None))
+    all_t = query.all()
     total = len(all_t)
     now = datetime.now()
 

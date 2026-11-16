@@ -1,0 +1,220 @@
+description,true_priority,predicted_priority,correct
+"User reported: Engineering team cannot deploy, CI/CD pipeline failing on every build",high,high,True
+URGENT: 24/7 monitoring alert: uptime dropped to 0% across all production endpoints,critical,critical,True
+Asking about company style guide for internal presentation templates,low,low,True
+"Ticket: nobody can process any orders, the entire e-commerce platform is unreachable",critical,critical,True
+"URGENT: Production database cluster is completely down, all services offline",critical,critical,True
+"Primary Kubernetes control plane unreachable, cannot deploy or scale anything",critical,critical,True
+User reported: Curious about the roadmap for future internal tool improvements,low,low,True
+User reported: Request to test whether a new browser extension is compatible with our SSO,medium,medium,True
+question about laptop,low,low,True
+User reported: Question about whether external monitors are eligible for reimbursement,low,low,True
+Requesting information about available software training courses,low,low,True
+Ticket: backup system failure discovered during attempted disaster recovery,critical,critical,True
+User reported: Request for additional storage quota on shared drive,medium,medium,True
+Ticket: video conferencing completely broken company-wide during a critical client call,high,high,True
+Ticket: info request,low,medium,False
+User reported: Question about how to add a delegate to shared calendar,low,low,True
+sap user locked,high,high,True
+"URGENT: Customer data export job failing, blocking a contractual delivery deadline",high,high,True
+please help,medium,medium,True
+"Ticket: vpn connection fails with certificate error, cannot work remotely",high,high,True
+"User reported: Cannot submit quarterly compliance report, portal returns error on every attempt",high,high,True
+connection issue,medium,medium,True
+Ticket: recruiting team locked out of the applicant tracking system during hiring push,high,high,True
+"URGENT: Customer support queue flooded, entire platform reported down by users",critical,critical,True
+Ticket: question about whether we support linux as a personal dev environment,low,low,True
+User reported: Requesting a printed copy of the company IT usage policy,low,low,True
+"URGENT: SSL certificate expired on customer-facing portal, users seeing security warnings",high,high,True
+"User reported: Fire suppression system triggered in server room, emergency shutdown initiated",critical,critical,True
+User reported: Asking about optional add-ons available for the standard laptop bundle,low,low,True
+"User reported: Customer data export job failing, blocking a contractual delivery deadline",high,high,True
+"URGENT: Data center power failure, all production servers unreachable",critical,critical,True
+User reported: Request for guest Wi-Fi credentials for upcoming vendor visit,medium,medium,True
+User reported: Asking if there's a suggested onboarding buddy program contact,low,low,True
+"Ticket: greetings team, kindly do the needful as my sap login is showing user locked error for my id",high,high,True
+User reported: all servers offline,critical,critical,True
+Server returning intermittent 504 gateway timeout errors for one application,high,critical,False
+User reported: Need permissions updated after internal team reorganization,medium,medium,True
+"DDoS attack overwhelming public-facing web servers, site unreachable",critical,critical,True
+Ticket: asking whether standing desks are available for new hires,low,low,True
+entire site down,critical,critical,True
+Need access granted to internal wiki space for new team member,medium,medium,True
+User reported: question about laptop,low,low,True
+Ticket: facing error,medium,medium,True
+User reported: Emergency: our main website has been down for the last 20 minutes,critical,critical,True
+Need to update the on-call rotation schedule for next month,medium,medium,True
+Ticket: requesting information about available software training courses,low,low,True
+User reported: Software update available but not yet installed on department laptops,medium,medium,True
+Immediate danger: unauthorized wire transfer detected from compromised finance account,critical,critical,True
+Ticket: data pipeline feeding the ml model has been broken for two days,high,high,True
+"Confirmed security breach, attacker has access to production database",critical,critical,True
+"Ticket: honored support team, please be informed that our core banking cluster has completely halted operation",critical,critical,True
+User reported: facing error,medium,medium,True
+User reported: software broken,medium,medium,True
+"User reported: Primary Kubernetes control plane unreachable, cannot deploy or scale anything",critical,critical,True
+Ticket: request to add a new field to the internal ticket intake form,medium,medium,True
+Ticket: curious about whether team can get branded laptop stickers,low,low,True
+"URGENT: Root certificate expired unexpectedly, breaking all internal service communication",critical,critical,True
+"Requesting an extra desk mat, current one is slightly worn but functional",low,low,True
+"URGENT: Cannot submit quarterly compliance report, portal returns error on every attempt",high,high,True
+"Minor delay in nightly report generation, report still arrives by morning",medium,medium,True
+Customer support inbox not receiving any new emails since this morning,high,high,True
+Ticket: massive spike in 500 errors correlating with total service unavailability,critical,critical,True
+"Production alerting system itself went down, we're flying blind on monitoring",high,high,True
+Ticket: general inquiry about upcoming it system maintenance windows,low,low,True
+"User reported: Full site outage reported by monitoring, all regions affected",critical,critical,True
+User reported: Primary and backup internet circuits both down at headquarters,critical,critical,True
+"Ticket: respected sir, kindly look into this urgently as all production servers are offline and returning 500 errors",critical,critical,True
+"Ticket: internal wiki completely inaccessible, teams cannot find critical documentation",high,high,True
+"Production Kafka cluster down, no messages processing across all services",critical,critical,True
+User reported: laptop problem,medium,medium,True
+Ticket: asking about the process to nominate a tool for company-wide adoption,low,low,True
+User reported: Requesting a new mouse pad and desk organizer for workstation,low,low,True
+Ticket: request for additional storage quota on shared drive,medium,medium,True
+"User reported: This is urgent, nobody in the company can access email or Slack right now",critical,critical,True
+Ticket: please help,medium,medium,True
+"Okta MFA push notifications not arriving, cannot log into any system",high,high,True
+"Respected team, kindly help configure email signature template for new company branding",medium,medium,True
+Ticket: request to extend trial access to a new productivity tool for evaluation,medium,medium,True
+"Respected team, kindly share documentation on how to use internal knowledge base",low,low,True
+User reported: Billing system miscalculating invoices for a large batch of customers,high,high,True
+something's wrong,medium,medium,True
+"URGENT: Password reset not working, employee locked out before critical deadline",high,high,True
+"Ticket: corrupted database backup discovered, no viable restore point exists",critical,critical,True
+User reported: Question about the typical response time for non-urgent IT requests,low,low,True
+"User reported: Honored support team, please be informed that our core banking cluster has completely halted operation",critical,critical,True
+"User reported: Data sync job failing repeatedly, reports showing incorrect financial figures",high,high,True
+"Ticket: customer data export job failing, blocking a contractual delivery deadline",high,high,True
+Ticket: need firewall rule opened for new vendor saas integration,medium,medium,True
+User reported: Need to archive old project files to free up shared drive space,medium,medium,True
+User reported: General question about how to submit an IT feature request,low,low,True
+"Fire suppression system triggered in server room, emergency shutdown initiated",critical,critical,True
+URGENT: Server returning intermittent 504 gateway timeout errors for one application,high,critical,False
+High-priority customer escalation blocked by billing system error,high,high,True
+"User reported: Entire QA team blocked, staging environment throwing constant errors",high,high,True
+URGENT: Data pipeline feeding the ML model has been broken for two days,high,high,True
+Ticket: requesting a copy of the it onboarding slide deck for reference,low,low,True
+User reported: Laptop occasionally needs a restart after waking from sleep,medium,medium,True
+"URGENT: DDoS attack overwhelming public-facing web servers, site unreachable",critical,critical,True
+Ticket: slow loading times on internal reporting tool during peak hours,medium,medium,True
+"Contractor access revoked accidentally mid-project, blocking delivery",high,high,True
+"Ticket: mass password reset triggered accidentally, locking out the entire org",critical,critical,True
+"URGENT: SAP SU53 authorization denied, blocked from processing purchase orders",high,high,True
+User reported: Question about whether personal headphones can be used with the desk phone,low,low,True
+User reported: Slow loading times on internal reporting tool during peak hours,medium,medium,True
+Ticket: need help configuring email signature template for new branding,medium,medium,True
+Critical vulnerability actively being exploited on internet-facing server,critical,critical,True
+"User reported: Wi-Fi signal weak in one corner of the office, wired connection available",medium,medium,True
+policy question,low,low,True
+"User reported: Respected team, kindly note that no employees are able to log in due to active directory server crash",critical,critical,True
+User reported: SFTP server rejecting all vendor file uploads since last night,high,high,True
+app not loading,medium,medium,True
+Asking if there's a way to preview upcoming system maintenance notices,low,low,True
+User reported: Would like to request an additional monitor for ergonomic setup,low,low,True
+User reported: Request to test a new integration in the staging environment first,medium,medium,True
+Request to test a new integration in the staging environment first,medium,medium,True
+Ticket: company email down,critical,critical,True
+URGENT: Emergency escalation: trading platform down during market hours,critical,critical,True
+User reported: Meeting room video conferencing camera has poor image quality,medium,medium,True
+"URGENT: SAP GRC access request stuck, blocking new hire from working",high,high,True
+"Ticket: new hire cannot access any systems on their first day, provisioning failed",high,high,True
+Ticket: server returning intermittent 504 gateway timeout errors for one application,high,high,True
+On-call engineer paged repeatedly by a flapping but non-fatal alert,high,high,True
+Ticket: outlook occasionally freezes when opening large attachments,medium,medium,True
+Ticket: sap user locked,high,high,True
+Ticket: entire user base reporting inability to log in simultaneously across regions,critical,critical,True
+User reported: getting an error,medium,medium,True
+Ticket: requesting a printed copy of the company it usage policy,low,low,True
+"Root certificate expired unexpectedly, breaking all internal service communication",critical,critical,True
+"URGENT: Primary Kubernetes control plane unreachable, cannot deploy or scale anything",critical,critical,True
+"URGENT: Corrupted database backup discovered, no viable restore point exists",critical,critical,True
+"URGENT: Contractor access revoked accidentally mid-project, blocking delivery",high,high,True
+"User reported: All hands needed, checkout system is completely broken, losing sales every minute",critical,critical,True
+"Wi-Fi signal weak in one corner of the office, wired connection available",medium,medium,True
+"Ticket: single production microservice crash-looping, degraded but not fully down",high,high,True
+Question about whether external monitors are eligible for reimbursement,low,low,True
+User reported: Building-wide power outage has taken every on-prem system offline,critical,critical,True
+Ticket: legal team locked out of document management system before filing deadline,high,high,True
+Dashboard reporting shows minor data lag of a few hours,medium,medium,True
+"URGENT: Cannot generate any PDF exports, blocking a client-facing deliverable",high,high,True
+Database replication lag causing stale data on customer dashboard,high,high,True
+User reported: Data pipeline feeding the ML model has been broken for two days,high,high,True
+"URGENT: Full network partition between our two data centers, no failover possible",critical,critical,True
+Would like an optional desk plant approved for personal workspace,low,low,True
+URGENT: Suspicious phishing email with credential harvesting link reported by multiple users,high,high,True
+Ticket: prod db down,critical,critical,True
+User reported: policy question,low,low,True
+Ticket: question about the typical response time for non-urgent it requests,low,low,True
+"Ticket: request for a second display cable, current one has minor connector wear",medium,medium,True
+Ticket: requesting an optional calendar block for quiet focus time setup help,low,low,True
+"Ticket: developer cannot push code, git server rejecting all authentication attempts",high,high,True
+Ticket: firewall misconfiguration blocking legitimate traffic to critical application,high,high,True
+"SAP GRC access request stuck, blocking new hire from working",high,high,True
+User reported: Requesting an optional walkthrough of keyboard accessibility settings,low,low,True
+"URGENT: Fire suppression system triggered in server room, emergency shutdown initiated",critical,critical,True
+Ticket: occasional typo found in an automated system-generated email template,medium,medium,True
+"URGENT: New hire cannot access any systems on their first day, provisioning failed",high,high,True
+"URGENT: Respected team, kindly grant access as I am completely blocked from accessing CRM before my client demo",high,high,True
+"User reported: Developer cannot push code, git server rejecting all authentication attempts",high,high,True
+"Good day, I am respectfully requesting urgent resolution as Okta MFA is not arriving on my mobile device",high,high,True
+"User reported: New hire cannot access any systems on their first day, provisioning failed",high,high,True
+URGENT: Entire user base reporting inability to log in simultaneously across regions,critical,critical,True
+"Ticket: entire authentication service down, no employees can log into any system",critical,critical,True
+Ticket: need guidance,low,low,True
+"Ticket: full network partition between our two data centers, no failover possible",critical,critical,True
+User reported: Requesting general feedback on the new self-service IT portal design,low,low,True
+"Ticket: active directory domain controller down, no one can log in anywhere",critical,critical,True
+"User reported: DDoS attack overwhelming public-facing web servers, site unreachable",critical,critical,True
+"Ticket: primary kubernetes control plane unreachable, cannot deploy or scale anything",critical,critical,True
+"User reported: Data warehouse ETL job stuck, tomorrow's board report will be incomplete",high,high,True
+"Ticket: confirmed suspicious access to a single employee's account, containing now",high,high,True
+"Ticket: sap su53 authorization denied, blocked from processing purchase orders",high,high,True
+URGENT: Access denied error blocking entire team from CRM system,high,high,True
+"URGENT: Dear support team, please be advised that our customer checkout payment system has experienced a total outage",critical,critical,True
+"User reported: Greetings support, I am requesting information about available software training courses",low,low,True
+URGENT: company email down,critical,critical,True
+User reported: Asking for a walkthrough of the new expense reporting tool,low,low,True
+URGENT: Multiple users reporting they cannot reset their own passwords,high,high,True
+Requesting information about noise-cancelling headset options,low,low,True
+Ticket: dashboard reporting shows minor data lag of a few hours,medium,medium,True
+"User reported: Laptop battery health degraded, still usable but needs eventual replacement",medium,medium,True
+URGENT: Air conditioning failure in server room causing servers to overheat and shut down,critical,critical,True
+"User reported: Server room flooding reported, emergency shutdown of all hardware required",critical,critical,True
+User reported: Request for a loaner laptop while primary device is being repaired,medium,medium,True
+"Ticket: contractor access revoked accidentally mid-project, blocking delivery",high,high,True
+"Respected team, kindly be informed that our production database has been completely unreachable since this morning",critical,critical,True
+User reported: One entire department's laptops failed to boot after a bad update rollout,high,high,True
+"User reported: A regional office's entire network dropped, they're fully offline",high,critical,False
+User reported: Requesting information about company laptop refresh cycle,low,low,True
+Meeting room video conferencing camera has poor image quality,medium,medium,True
+User reported: Curious if there's a dark mode option for the internal portal,low,low,True
+User reported: Database replication lag causing stale data on customer dashboard,high,high,True
+Ticket: critical data loss detected after failed migration script execution,critical,critical,True
+Ticket: one entire department's laptops failed to boot after a bad update rollout,high,high,True
+User reported: how to use this,low,medium,False
+"Ticket: printer in accounting department jammed, workaround printer available nearby",medium,medium,True
+"Ticket: engineering team cannot deploy, ci/cd pipeline failing on every build",high,high,True
+"Ticket: executive team locked out during live board meeting, system-wide login failure",critical,critical,True
+datacenter down,critical,critical,True
+User reported: connection issue,medium,high,False
+Curious about what video conferencing tools are officially supported,low,low,True
+getting an error,medium,medium,True
+URGENT: Video conferencing completely broken company-wide during a critical client call,high,high,True
+URGENT: Our SaaS platform is completely down for every single customer,critical,critical,True
+"Laptop fan runs a bit louder than usual under heavy load, still functional",medium,medium,True
+User reported: Asking if there's a suggested reading list for new engineers,low,low,True
+having trouble,medium,high,False
+User reported: Company intranet search returning some outdated results,medium,medium,True
+Need help configuring email signature template for new branding,medium,medium,True
+User reported: All point-of-sale terminals down across every retail location,critical,critical,True
+Software update available but not yet installed on department laptops,medium,medium,True
+"User reported: Malicious insider deleted production tables, need immediate restore",critical,critical,True
+"User reported: Production release rollback failed, application is now completely unusable",critical,critical,True
+User reported: Curious about whether team can get branded laptop stickers,low,low,True
+"URGENT: Confirmed security breach, attacker has access to production database",critical,critical,True
+User reported: having trouble,medium,medium,True
+Ticket: critical vulnerability actively being exploited on internet-facing server,critical,critical,True
+"URGENT: All hands needed, checkout system is completely broken, losing sales every minute",critical,critical,True
+Ticket: system error popped up,medium,medium,True
+Request to update distribution list membership for department,medium,medium,True

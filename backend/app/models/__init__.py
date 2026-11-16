@@ -6,6 +6,7 @@ from app.models.sla import SLAEscalationLog
 from app.models.knowledge import KnowledgeArticle
 from app.models.feedback import DuplicateFeedbackLog
 from app.models.retraining import RetrainingLog
+from app.models.availability import AgentShift, AgentLeave, OnCallRoster, PublicHoliday, AssignmentLog
 
 __all__ = [
     "User",
@@ -17,4 +18,9 @@ __all__ = [
     "KnowledgeArticle",
     "DuplicateFeedbackLog",
     "RetrainingLog",
+    "AgentShift",
+    "AgentLeave",
+    "OnCallRoster",
+    "PublicHoliday",
+    "AssignmentLog",
 ]

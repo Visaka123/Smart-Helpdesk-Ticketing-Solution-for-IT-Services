@@ -1,19 +1,64 @@
 import json
 from datetime import datetime
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from pydantic import BaseModel
 from typing import Optional, List
 
 from app.database.database import SessionLocal
 from app.models import Ticket, TicketRequester, TicketComment, SLAEscalationLog, Team, User, DuplicateFeedbackLog
+from app.models.availability import AgentLeave
+from app.availability.service import _is_on_leave, _is_on_shift, _open_ticket_count
+from app.auth.rbac import get_current_user_from_headers
 from app.duplicate.service import detect_hybrid_duplicates
 from app.chatbot.service import RAG_chatbot_query
 from app.sla.service import audit_and_trigger_sla_escalations
 from app.routing.service import predict_team_ml
 from app.priority.service import predict_priority_enhanced
 from app.sla.service import calculate_sla_due_at
+from app.availability.routes import view_as_agent, ViewAsRequest
 
 router = APIRouter()
+
+def _get_audit_actor(request: Request, db, default_role="agent") -> tuple:
+    """
+    Returns (actor_name, actor_role, audit_context).
+    If request is impersonating an agent via X-View-As-Agent:
+      actor_name = real_manager.name (or "John Manager")
+      actor_role = "manager"
+      audit_context = f"viewing as {view_as_name}"
+    """
+    if not request:
+        return "Support Agent", default_role, ""
+
+    view_as_name = request.headers.get("X-View-As-Agent")
+    if view_as_name:
+        caller = get_current_user_from_headers(request, db, bypass_view_as=True)
+        caller_role = request.headers.get("X-Real-User-Role") or (caller.role if caller else "") or request.headers.get("X-User-Role", "")
+        if caller_role not in {"manager", "admin", "team_lead"}:
+            raise HTTPException(status_code=403, detail="Forbidden: Impersonation only allowed for managers")
+
+        import os
+        demo_mode_env = os.environ.get("DEMO_MODE", "true").lower() == "true"
+        if not demo_mode_env:
+            raise HTTPException(status_code=403, detail="Forbidden: Impersonation only allowed when DEMO_MODE is on")
+
+        target = db.query(User).filter(
+            (User.name == view_as_name) | (User.name.like(f"%{view_as_name}%"))
+        ).first()
+        if not target or target.role != "agent":
+            raise HTTPException(status_code=403, detail="Forbidden: Can only impersonate support agents")
+
+        real_name = getattr(caller, "name", None) or request.headers.get("X-Real-User-Name") or "John Manager"
+        return real_name, "manager", f"viewing as {target.name}"
+
+    caller = get_current_user_from_headers(request, db)
+    if caller:
+        return caller.name, caller.role, ""
+    return "Support Agent", default_role, ""
+
+@router.post("/view-as")
+def agent_view_as(req: ViewAsRequest, request: Request):
+    return view_as_agent(req, request)
 
 class ResolveTicketRequest(BaseModel):
     resolution_summary: str
@@ -44,6 +89,7 @@ class AssignEngineerRequest(BaseModel):
 
 @router.get("/queue")
 def get_agent_queue(
+    request: Request,
     team: Optional[str] = None,
     priority: Optional[str] = None,
     status: Optional[str] = None,
@@ -52,7 +98,17 @@ def get_agent_queue(
     db = SessionLocal()
     audit_and_trigger_sla_escalations()
 
+    caller = get_current_user_from_headers(request, db)
+    # If caller is an agent who is on leave, queue is completely empty
+    if caller and caller.role == "agent" and _is_on_leave(caller, datetime.utcnow(), db):
+        db.close()
+        return []
+
     query = db.query(Ticket)
+    # Agent view: show only that agent's own tickets
+    if caller and caller.role == "agent":
+        query = query.filter(Ticket.assigned_agent_name == caller.name)
+
     if team and team != "All":
         query = query.filter(Ticket.assigned_team == team)
     if priority and priority != "All":
@@ -224,7 +280,7 @@ def get_ticket_detail(ticket_id: int, request: Request):
     return data
 
 @router.post("/assign-team/{ticket_id}")
-def assign_team_inline(ticket_id: int, req: InlineAssignRequest):
+def assign_team_inline(ticket_id: int, req: InlineAssignRequest, request: Request = None):
     db = SessionLocal()
     ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
     if not ticket:
@@ -236,14 +292,20 @@ def assign_team_inline(ticket_id: int, req: InlineAssignRequest):
         db.close()
         return {"message": f"Team is already '{req.new_team}'"}
 
+    actor_name, actor_role, audit_ctx = _get_audit_actor(request, db, default_role="agent")
+    comment_author = f"{actor_name} ({audit_ctx})" if audit_ctx else "System / Queue Triage"
+    comment_content = f"Assigned team from '{old_team}' to '{req.new_team}'."
+    if audit_ctx:
+        comment_content += f"\n[Audit: {actor_name}, context: {audit_ctx}]"
+
     ticket.assigned_team = req.new_team
     ticket.is_low_confidence_routed = False
 
     comment = TicketComment(
         ticket_id=ticket_id,
-        author_name="System / Queue Triage",
-        author_role="agent",
-        content=f"Assigned team from '{old_team}' to '{req.new_team}'.",
+        author_name=comment_author,
+        author_role=actor_role,
+        content=comment_content,
         is_internal=True,
     )
     db.add(comment)
@@ -252,7 +314,7 @@ def assign_team_inline(ticket_id: int, req: InlineAssignRequest):
     return {"message": f"Ticket #{ticket_id} assigned to '{req.new_team}'"}
 
 @router.post("/change-priority/{ticket_id}")
-def change_priority_endpoint(ticket_id: int, req: ChangePriorityRequest):
+def change_priority_endpoint(ticket_id: int, req: ChangePriorityRequest, request: Request = None):
     db = SessionLocal()
     ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
     if not ticket:
@@ -264,12 +326,18 @@ def change_priority_endpoint(ticket_id: int, req: ChangePriorityRequest):
         db.close()
         return {"message": f"Priority is already '{req.new_priority}'"}
 
+    actor_name, actor_role, audit_ctx = _get_audit_actor(request, db, default_role="agent")
+    comment_author = f"{actor_name} ({audit_ctx})" if audit_ctx else (actor_name or "Support Agent")
+    comment_content = f"Changed priority from '{old_p}' to '{req.new_priority}'."
+    if audit_ctx:
+        comment_content += f"\n[Audit: {actor_name}, context: {audit_ctx}]"
+
     ticket.priority = req.new_priority
     comment = TicketComment(
         ticket_id=ticket_id,
-        author_name="Support Agent",
-        author_role="agent",
-        content=f"Changed priority from '{old_p}' to '{req.new_priority}'.",
+        author_name=comment_author,
+        author_role=actor_role,
+        content=comment_content,
         is_internal=True,
     )
     db.add(comment)
@@ -278,7 +346,7 @@ def change_priority_endpoint(ticket_id: int, req: ChangePriorityRequest):
     return {"message": f"Priority changed to {req.new_priority}"}
 
 @router.post("/change-status/{ticket_id}")
-def change_status_endpoint(ticket_id: int, req: ChangeStatusRequest):
+def change_status_endpoint(ticket_id: int, req: ChangeStatusRequest, request: Request = None):
     db = SessionLocal()
     ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
     if not ticket:
@@ -290,15 +358,21 @@ def change_status_endpoint(ticket_id: int, req: ChangeStatusRequest):
         db.close()
         return {"message": f"Status is already '{req.new_status}'"}
 
+    actor_name, actor_role, audit_ctx = _get_audit_actor(request, db, default_role="agent")
+    comment_author = f"{actor_name} ({audit_ctx})" if audit_ctx else (actor_name or "Support Agent")
+    comment_content = f"Changed status from '{old_s}' to '{req.new_status}'."
+    if audit_ctx:
+        comment_content += f"\n[Audit: {actor_name}, context: {audit_ctx}]"
+
     ticket.status = req.new_status
     if req.new_status in ["resolved", "closed"] and not ticket.resolved_at:
         ticket.resolved_at = datetime.now()
 
     comment = TicketComment(
         ticket_id=ticket_id,
-        author_name="Support Agent",
-        author_role="agent",
-        content=f"Changed status from '{old_s}' to '{req.new_status}'.",
+        author_name=comment_author,
+        author_role=actor_role,
+        content=comment_content,
         is_internal=False,
     )
     db.add(comment)
@@ -307,24 +381,35 @@ def change_status_endpoint(ticket_id: int, req: ChangeStatusRequest):
     return {"message": f"Status changed to {req.new_status}"}
 
 @router.post("/assign-engineer/{ticket_id}")
-def assign_engineer_endpoint(ticket_id: int, req: AssignEngineerRequest):
+def assign_engineer_endpoint(ticket_id: int, req: AssignEngineerRequest, request: Request = None):
     db = SessionLocal()
     ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
     if not ticket:
         db.close()
         raise HTTPException(status_code=404, detail="Ticket not found")
 
+    target_user = db.query(User).filter(User.name == req.agent_name).first()
+    if target_user and _is_on_leave(target_user, datetime.utcnow(), db):
+        db.close()
+        raise HTTPException(status_code=400, detail=f"Cannot assign: Agent '{req.agent_name}' is currently on leave.")
+
     old_engineer = ticket.assigned_agent_name
     if old_engineer == req.agent_name:
         db.close()
         return {"message": f"Engineer '{req.agent_name}' is already assigned."}
 
+    actor_name, actor_role, audit_ctx = _get_audit_actor(request, db, default_role="agent")
+    comment_author = f"{actor_name} ({audit_ctx})" if audit_ctx else (actor_name or "Support Agent")
+    comment_content = f"Assigned engineer '{req.agent_name}' to Ticket #{ticket_id}."
+    if audit_ctx:
+        comment_content += f"\n[Audit: {actor_name}, context: {audit_ctx}]"
+
     ticket.assigned_agent_name = req.agent_name
     comment = TicketComment(
         ticket_id=ticket_id,
-        author_name="Support Agent",
-        author_role="agent",
-        content=f"Assigned engineer '{req.agent_name}' to Ticket #{ticket_id}.",
+        author_name=comment_author,
+        author_role=actor_role,
+        content=comment_content,
         is_internal=True,
     )
     db.add(comment)
@@ -333,7 +418,7 @@ def assign_engineer_endpoint(ticket_id: int, req: AssignEngineerRequest):
     return {"message": f"Engineer '{req.agent_name}' assigned."}
 
 @router.post("/resolve/{ticket_id}")
-def resolve_ticket(ticket_id: int, req: ResolveTicketRequest):
+def resolve_ticket(ticket_id: int, req: ResolveTicketRequest, request: Request = None):
     """
     Single close action resolves Ticket #X for ALL linked requesters at once.
     """
@@ -351,6 +436,9 @@ def resolve_ticket(ticket_id: int, req: ResolveTicketRequest):
             "resolved_requesters": [ticket.requester_name],
         }
 
+    actor_name, actor_role, audit_ctx = _get_audit_actor(request, db, default_role="agent")
+    comment_author = f"{actor_name} ({audit_ctx})" if audit_ctx else (actor_name or "Support Agent")
+
     ticket.status = "resolved"
     ticket.resolution_summary = req.resolution_summary
     ticket.resolution_detail = req.resolution_detail or req.resolution_summary
@@ -362,18 +450,22 @@ def resolve_ticket(ticket_id: int, req: ResolveTicketRequest):
     req_rows = db.query(TicketRequester).filter(TicketRequester.ticket_id == ticket_id).all()
     all_names = list(set([ticket.requester_name] + [r.requester_name for r in req_rows if r.requester_name]))
 
+    comment_content = f"TICKET RESOLVED FOR ALL {len(all_names)} LINKED REQUESTERS ({', '.join(all_names)}).\nResolution Summary: {req.resolution_summary}\nRoot Cause: {req.root_cause}"
+    if audit_ctx:
+        comment_content += f"\n[Audit: {actor_name}, context: {audit_ctx}]"
+
     comment = TicketComment(
         ticket_id=ticket_id,
-        author_name="Support Agent",
-        author_role="agent",
-        content=f"TICKET RESOLVED FOR ALL {len(all_names)} LINKED REQUESTERS ({', '.join(all_names)}).\nResolution Summary: {req.resolution_summary}\nRoot Cause: {req.root_cause}",
+        author_name=comment_author,
+        author_role=actor_role,
+        content=comment_content,
         is_internal=False,
     )
     db.add(comment)
     db.commit()
     db.close()
 
-    print(f"[SINGLE RESOLVE ACTION] Ticket #{ticket_id} marked RESOLVED for all {len(all_names)} linked requesters: {', '.join(all_names)}!")
+    print(f"[SINGLE RESOLVE ACTION] Ticket #{ticket_id} marked RESOLVED by {comment_author} for all {len(all_names)} linked requesters: {', '.join(all_names)}!")
 
     return {
         "message": f"Ticket #{ticket_id} resolved for all {len(all_names)} linked requesters",
@@ -445,17 +537,24 @@ def split_requester(ticket_id: int, req: SplitRequesterRequest):
     }
 
 @router.post("/comment/{ticket_id}")
-def add_ticket_comment(ticket_id: int, req: AddCommentRequest):
+def add_ticket_comment(ticket_id: int, req: AddCommentRequest, request: Request = None):
     db = SessionLocal()
     ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
     if not ticket:
         db.close()
         raise HTTPException(status_code=404, detail="Ticket not found")
 
+    actor_name, actor_role, audit_ctx = _get_audit_actor(request, db, default_role=req.author_role)
+    author_name = f"{actor_name} ({audit_ctx})" if audit_ctx else req.author_name
+    author_role = actor_role if audit_ctx else req.author_role
+    content = req.content
+    if audit_ctx:
+        content += f"\n[Audit: {actor_name}, context: {audit_ctx}]"
+
     recent_comment = db.query(TicketComment).filter(
         TicketComment.ticket_id == ticket_id,
-        TicketComment.content == req.content.strip(),
-        TicketComment.author_role == req.author_role
+        TicketComment.content == content.strip(),
+        TicketComment.author_role == author_role
     ).order_by(TicketComment.id.desc()).first()
 
     if recent_comment:
@@ -465,9 +564,9 @@ def add_ticket_comment(ticket_id: int, req: AddCommentRequest):
 
     comment = TicketComment(
         ticket_id=ticket_id,
-        author_name=req.author_name,
-        author_role=req.author_role,
-        content=req.content,
+        author_name=author_name,
+        author_role=author_role,
+        content=content,
         is_internal=req.is_internal,
         created_at=datetime.now(),
     )
@@ -554,3 +653,49 @@ def get_manager_dashboard():
         "team_performance": team_stats,
         "recent_escalations": escalation_list,
     }
+
+
+@router.get("/my-status")
+def get_my_status(request: Request):
+    db = SessionLocal()
+    try:
+        user = get_current_user_from_headers(request, db)
+        if not user:
+            return {
+                "status": "off_shift",
+                "is_on_leave": False,
+                "leave_until": None,
+                "return_date": None,
+                "open_tickets": 0,
+                "ticket_cap": 10,
+                "shift_status": "Off Shift",
+                "next_shift": "Next shift starts 09:00 IST",
+            }
+        from app.availability.service import get_agent_status
+        utc_now = datetime.utcnow()
+        agent_status = get_agent_status(user, utc_now, db)
+
+        leave_until = None
+        if agent_status.leave_rec:
+            leave_until = agent_status.leave_rec.end_datetime.strftime("%b %d, %Y")
+
+        shift_status_label = "On Leave" if agent_status.status == "on_leave" else (
+            "In Shift" if agent_status.status in ("available", "at_capacity") else "Off Shift"
+        )
+
+        return {
+            "id": user.id,
+            "name": user.name,
+            "role": user.role,
+            "status": agent_status.status,
+            "is_on_leave": agent_status.status == "on_leave",
+            "leave_until": leave_until,
+            "return_date": agent_status.return_date,
+            "open_tickets": agent_status.open_count,
+            "ticket_cap": agent_status.cap,
+            "shift_status": shift_status_label,
+            "next_shift": agent_status.next_shift,
+            "on_call": agent_status.on_call,
+        }
+    finally:
+        db.close()

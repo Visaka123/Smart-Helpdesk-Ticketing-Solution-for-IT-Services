@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useOutletContext } from 'react-router-dom'
 import {
   Box,
   Typography,
@@ -33,6 +34,7 @@ import CallSplitIcon from '@mui/icons-material/CallSplit'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import LockIcon from '@mui/icons-material/Lock'
 import AccessTimeIcon from '@mui/icons-material/AccessTime'
+import BeachAccessIcon from '@mui/icons-material/BeachAccess'
 import axios from 'axios'
 
 import { PriorityBadge, SLABadge, StatusBadge } from '../components/ui/SemanticBadges'
@@ -41,14 +43,42 @@ import { KnowledgeRecommendationPanel } from '../components/ui/KnowledgeRecommen
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
-const API_BASE = 'http://localhost:8000'
+const API_BASE = import.meta.env.VITE_API_BASE ?? ''
+
+const DEFAULT_TEAM_OPTIONS = [
+  'Unassigned/Triage',
+  'Network Operations',
+  'Network Team',
+  'Network & Security',
+  'Application Support',
+  'Database Operations',
+  'DevOps & Cloud Infra',
+  'SAP / ERP Team',
+  'Identity & Access Management',
+  'IT Admin',
+  'Desktop Support',
+  'Procurement',
+  'HR Operations',
+  'General Support',
+]
+
+function getTeamOptions(current?: string) {
+  if (current && !DEFAULT_TEAM_OPTIONS.includes(current)) {
+    return [current, ...DEFAULT_TEAM_OPTIONS]
+  }
+  return DEFAULT_TEAM_OPTIONS
+}
 
 export default function AgentPortalPage() {
   const theme = useTheme()
+  const context = useOutletContext<{ currentRole?: string; viewingAsAgent?: string | null }>()
+  const currentRole = context?.currentRole || 'agent'
+  const viewingAsAgent = context?.viewingAsAgent || localStorage.getItem('viewing_as_agent')
   const [tabValue, setTabValue] = useState(0)
   const [tickets, setTickets] = useState<any[]>([])
   const [stats, setStats] = useState<any>(null)
   const [managerData, setManagerData] = useState<any>(null)
+  const [myStatus, setMyStatus] = useState<any>(null)
 
   const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null)
   const [ticketDetail, setTicketDetail] = useState<any>(null)
@@ -78,35 +108,57 @@ export default function AgentPortalPage() {
     try {
       const token = localStorage.getItem('token')
       const storedUser = localStorage.getItem('user')
+      const currentViewingAs = viewingAsAgent || localStorage.getItem('viewing_as_agent')
+      const isDemo = localStorage.getItem('demo_mode') === 'true'
       const headers: any = {}
       if (token) headers['Authorization'] = `Bearer ${token}`
+      if (currentViewingAs) {
+        headers['X-View-As-Agent'] = currentViewingAs
+        headers['X-Real-User-Role'] = 'manager'
+      }
+      if (isDemo) {
+        headers['X-Demo-Mode'] = 'true'
+      }
       if (storedUser) {
         try {
           const u = JSON.parse(storedUser)
           headers['X-User-Id'] = String(u.id)
-          headers['X-User-Role'] = 'agent'
+          headers['X-User-Role'] = u.role || 'agent'
           headers['X-User-Email'] = u.email
+          headers['X-User-Name'] = u.name
         } catch (e) {}
       } else {
         headers['X-User-Role'] = 'agent'
       }
 
-      const [qRes, sRes, mRes] = await Promise.all([
+      const [qRes, sRes, mRes, statusRes] = await Promise.all([
         axios.get(`${API_BASE}/agent/queue`, { headers }),
         axios.get(`${API_BASE}/agent/agent-stats`, { headers }),
         axios.get(`${API_BASE}/agent/manager-dashboard`, { headers }),
+        axios.get(`${API_BASE}/agent/my-status`, { headers }).catch(() => ({ data: null })),
       ])
-      setTickets(qRes.data)
+      setTickets(Array.isArray(qRes.data) ? qRes.data : [])
       setStats(sRes.data)
       setManagerData(mRes.data)
+      if (statusRes?.data) setMyStatus(statusRes.data)
     } catch (e) {
       console.error('Error fetching agent queue:', e)
+      setTickets([])
     }
   }
 
   useEffect(() => {
     fetchAgentQueue()
-  }, [])
+    const handleRefresh = () => fetchAgentQueue()
+    window.addEventListener('view_as_changed', handleRefresh)
+    window.addEventListener('storage', handleRefresh)
+    window.addEventListener('demo_mode_changed', handleRefresh)
+    return () => {
+      window.removeEventListener('view_as_changed', handleRefresh)
+      window.removeEventListener('storage', handleRefresh)
+      window.removeEventListener('demo_mode_changed', handleRefresh)
+    }
+  }, [viewingAsAgent, currentRole])
 
   const openTicketDetail = (id: number) => {
     setSelectedTicketId(id)
@@ -331,53 +383,79 @@ export default function AgentPortalPage() {
         </Box>
       </Box>
 
-      <Box borderBottom={1} borderColor="divider" mb={3}>
-        <Tabs value={tabValue} onChange={(_, val) => setTabValue(val)} indicatorColor="primary" textColor="primary">
-          <Tab label="Agent Ticket Queue" style={{ fontWeight: 700 }} />
-          <Tab label="Manager SLA Escalation Center" style={{ fontWeight: 700 }} />
-        </Tabs>
-      </Box>
+      {!viewingAsAgent && currentRole === 'manager' && (
+        <Box borderBottom={1} borderColor="divider" mb={3}>
+          <Tabs value={tabValue} onChange={(_, val) => setTabValue(val)} indicatorColor="primary" textColor="primary">
+            <Tab label="Agent Ticket Queue" style={{ fontWeight: 700 }} />
+            <Tab label="Manager SLA Escalation Center" style={{ fontWeight: 700 }} />
+          </Tabs>
+        </Box>
+      )}
 
-      {tabValue === 0 ? (
+      {(viewingAsAgent || currentRole === 'agent' || tabValue === 0) ? (
         <Box>
+          {myStatus?.is_on_leave && (
+            <Alert
+              severity="warning"
+              sx={{
+                mb: 3,
+                fontWeight: 700,
+                fontSize: '1rem',
+                border: '1px solid #F59E0B',
+                bgcolor: theme.palette.mode === 'light' ? '#FEF3C7' : '#78350F',
+                color: theme.palette.mode === 'light' ? '#92400E' : '#FDE68A',
+              }}
+            >
+              You are on leave until {myStatus.leave_until || 'further notice'}
+            </Alert>
+          )}
           <Grid container spacing={2} mb={3}>
             <Grid item xs={12} sm={3}>
               <Paper sx={{ p: 2, bgcolor: 'background.paper', border: `1px solid ${theme.palette.divider}` }}>
-                <Typography variant="caption" style={{ color: theme.palette.text.secondary }}>
+                <Typography variant="caption" style={{ color: theme.palette.text.secondary, fontWeight: 700 }}>
+                  OPEN TICKETS / CAP
+                </Typography>
+                <Typography variant="h4" fontWeight={800} style={{ color: '#2563EB', marginTop: 4 }}>
+                  {myStatus ? `${myStatus.open_tickets} / ${myStatus.ticket_cap}` : `${tickets.length} / 10`}
+                </Typography>
+              </Paper>
+            </Grid>
+            <Grid item xs={12} sm={3}>
+              <Paper sx={{ p: 2, bgcolor: 'background.paper', border: `1px solid ${theme.palette.divider}` }}>
+                <Typography variant="caption" style={{ color: theme.palette.text.secondary, fontWeight: 700 }}>
+                  SHIFT STATUS
+                </Typography>
+                {myStatus?.is_on_leave || myStatus?.shift_status === 'On Leave' ? (
+                  <Box display="flex" alignItems="center" gap={1} mt={0.5}>
+                    <BeachAccessIcon style={{ color: '#D97706', fontSize: 24 }} />
+                    <Typography variant="h4" fontWeight={800} style={{ color: '#D97706' }}>
+                      On Leave
+                    </Typography>
+                  </Box>
+                ) : (
+                  <Typography variant="h4" fontWeight={800} style={{ color: myStatus?.shift_status === 'In Shift' ? '#10B981' : '#D97706', marginTop: 4 }}>
+                    {myStatus?.shift_status || 'In Shift'}
+                  </Typography>
+                )}
+              </Paper>
+            </Grid>
+            <Grid item xs={12} sm={3}>
+              <Paper sx={{ p: 2, bgcolor: 'background.paper', border: `1px solid ${theme.palette.divider}` }}>
+                <Typography variant="caption" style={{ color: theme.palette.text.secondary, fontWeight: 700 }}>
+                  SHIFT TIMING
+                </Typography>
+                <Typography variant="h6" fontWeight={800} style={{ color: theme.palette.text.primary, marginTop: 8 }}>
+                  {myStatus?.next_shift || 'Shift ends 18:00 IST'}
+                </Typography>
+              </Paper>
+            </Grid>
+            <Grid item xs={12} sm={3}>
+              <Paper sx={{ p: 2, bgcolor: 'background.paper', border: `1px solid ${theme.palette.divider}` }}>
+                <Typography variant="caption" style={{ color: theme.palette.text.secondary, fontWeight: 700 }}>
                   RESOLVED TICKETS
                 </Typography>
                 <Typography variant="h4" fontWeight={800} style={{ color: '#10B981', marginTop: 4 }}>
                   {stats?.tickets_resolved || 0}
-                </Typography>
-              </Paper>
-            </Grid>
-            <Grid item xs={12} sm={3}>
-              <Paper sx={{ p: 2, bgcolor: 'background.paper', border: `1px solid ${theme.palette.divider}` }}>
-                <Typography variant="caption" style={{ color: theme.palette.text.secondary }}>
-                  SLA COMPLIANCE
-                </Typography>
-                <Typography variant="h4" fontWeight={800} style={{ color: '#2563EB', marginTop: 4 }}>
-                  {stats?.sla_compliance_pct || 100}%
-                </Typography>
-              </Paper>
-            </Grid>
-            <Grid item xs={12} sm={3}>
-              <Paper sx={{ p: 2, bgcolor: 'background.paper', border: `1px solid ${theme.palette.divider}` }}>
-                <Typography variant="caption" style={{ color: theme.palette.text.secondary }}>
-                  AVG RESOLUTION TIME
-                </Typography>
-                <Typography variant="h4" fontWeight={800} style={{ color: '#D97706', marginTop: 4 }}>
-                  {stats?.avg_resolution_hours || 3.4} hrs
-                </Typography>
-              </Paper>
-            </Grid>
-            <Grid item xs={12} sm={3}>
-              <Paper sx={{ p: 2, bgcolor: 'background.paper', border: `1px solid ${theme.palette.divider}` }}>
-                <Typography variant="caption" style={{ color: theme.palette.text.secondary }}>
-                  ACTIVE BREACHED
-                </Typography>
-                <Typography variant="h4" fontWeight={800} style={{ color: '#DC2626', marginTop: 4 }}>
-                  {stats?.breached_count || 0}
                 </Typography>
               </Paper>
             </Grid>
@@ -399,51 +477,54 @@ export default function AgentPortalPage() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {tickets.map((t) => (
-                  <TableRow key={t.id} hover>
-                    <TableCell style={{ fontWeight: 700, color: '#2563EB' }}>#{t.id}</TableCell>
-                    <TableCell style={{ fontWeight: 600, color: theme.palette.text.primary }}>
-                      {t.title}
-                    </TableCell>
-                    <TableCell><PriorityBadge priority={t.priority} /></TableCell>
-                    <TableCell><StatusBadge status={t.status} /></TableCell>
-                    <TableCell><SLABadge badge={t.sla_badge} /></TableCell>
-                    <TableCell>
-                      <Chip
-                        icon={<GroupIcon style={{ fontSize: 14 }} />}
-                        label={`${t.requester_count} User${t.requester_count > 1 ? 's' : ''}`}
-                        size="small"
-                        style={{ backgroundColor: t.requester_count > 1 ? '#FEF3C7' : '#EFF6FF', color: t.requester_count > 1 ? '#B45309' : '#2563EB', fontWeight: 700 }}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Select
-                        size="small"
-                        value={t.assigned_team || 'General Support'}
-                        onChange={(e) => handleInlineAssignTeam(t.id, e.target.value)}
-                        sx={{ fontSize: '0.78rem', height: 32, minWidth: 180 }}
-                      >
-                        <MenuItem value="Unassigned/Triage">⚠️ Unassigned/Triage</MenuItem>
-                        <MenuItem value="Application Support">Application Support</MenuItem>
-                        <MenuItem value="Database Operations">Database Operations</MenuItem>
-                        <MenuItem value="DevOps & Cloud Infra">DevOps & Cloud Infra</MenuItem>
-                        <MenuItem value="Network & Security">Network & Security</MenuItem>
-                        <MenuItem value="SAP / ERP Team">SAP / ERP Team</MenuItem>
-                        <MenuItem value="Identity & Access Management">Identity & Access Management</MenuItem>
-                        <MenuItem value="IT Admin">IT Admin</MenuItem>
-                        <MenuItem value="Desktop Support">Desktop Support</MenuItem>
-                        <MenuItem value="Procurement">Procurement</MenuItem>
-                        <MenuItem value="HR Operations">HR Operations</MenuItem>
-                        <MenuItem value="General Support">General Support</MenuItem>
-                      </Select>
-                    </TableCell>
-                    <TableCell>
-                      <Button variant="contained" size="small" style={{ backgroundColor: '#2563EB' }} onClick={() => openTicketDetail(t.id)}>
-                        Open Workspace
-                      </Button>
+                {tickets.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} align="center" sx={{ py: 6 }}>
+                      <Typography variant="body1" fontWeight={600} style={{ color: theme.palette.text.secondary }}>
+                        No tickets in your queue.
+                      </Typography>
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  tickets.map((t) => (
+                    <TableRow key={t.id} hover>
+                      <TableCell style={{ fontWeight: 700, color: '#2563EB' }}>#{t.id}</TableCell>
+                      <TableCell style={{ fontWeight: 600, color: theme.palette.text.primary }}>
+                        {t.title}
+                      </TableCell>
+                      <TableCell><PriorityBadge priority={t.priority} /></TableCell>
+                      <TableCell><StatusBadge status={t.status} /></TableCell>
+                      <TableCell><SLABadge badge={t.sla_badge} /></TableCell>
+                      <TableCell>
+                        <Chip
+                          icon={<GroupIcon style={{ fontSize: 14 }} />}
+                          label={`${t.requester_count} User${t.requester_count > 1 ? 's' : ''}`}
+                          size="small"
+                          style={{ backgroundColor: t.requester_count > 1 ? '#FEF3C7' : '#EFF6FF', color: t.requester_count > 1 ? '#B45309' : '#2563EB', fontWeight: 700 }}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Select
+                          size="small"
+                          value={t.assigned_team || 'General Support'}
+                          onChange={(e) => handleInlineAssignTeam(t.id, e.target.value)}
+                          sx={{ fontSize: '0.78rem', height: 32, minWidth: 180 }}
+                        >
+                          {getTeamOptions(t.assigned_team).map((opt) => (
+                            <MenuItem key={opt} value={opt}>
+                              {opt === 'Unassigned/Triage' ? '⚠️ Unassigned/Triage' : opt}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </TableCell>
+                      <TableCell>
+                        <Button variant="contained" size="small" style={{ backgroundColor: '#2563EB' }} onClick={() => openTicketDetail(t.id)}>
+                          Open Workspace
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </Paper>
@@ -536,18 +617,11 @@ export default function AgentPortalPage() {
                   <FormControl fullWidth size="small" disabled={isClosed}>
                     <InputLabel>Team Assignment</InputLabel>
                     <Select value={currentTeam || 'General Support'} label="Team Assignment" onChange={(e) => handleInlineAssignTeam(ticketDetail.id, e.target.value)}>
-                      <MenuItem value="Unassigned/Triage">⚠️ Unassigned/Triage</MenuItem>
-                      <MenuItem value="Application Support">Application Support</MenuItem>
-                      <MenuItem value="Database Operations">Database Operations</MenuItem>
-                      <MenuItem value="DevOps & Cloud Infra">DevOps & Cloud Infra</MenuItem>
-                      <MenuItem value="Network & Security">Network & Security</MenuItem>
-                      <MenuItem value="SAP / ERP Team">SAP / ERP Team</MenuItem>
-                      <MenuItem value="Identity & Access Management">Identity & Access Management</MenuItem>
-                      <MenuItem value="IT Admin">IT Admin</MenuItem>
-                      <MenuItem value="Desktop Support">Desktop Support</MenuItem>
-                      <MenuItem value="Procurement">Procurement</MenuItem>
-                      <MenuItem value="HR Operations">HR Operations</MenuItem>
-                      <MenuItem value="General Support">General Support</MenuItem>
+                      {getTeamOptions(currentTeam).map((opt) => (
+                        <MenuItem key={opt} value={opt}>
+                          {opt === 'Unassigned/Triage' ? '⚠️ Unassigned/Triage' : opt}
+                        </MenuItem>
+                      ))}
                     </Select>
                   </FormControl>
                 </Grid>

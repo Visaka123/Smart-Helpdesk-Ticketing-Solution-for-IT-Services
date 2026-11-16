@@ -4,16 +4,17 @@ import {
   Box, Card, CardContent, Typography, TextField, Select, MenuItem,
   FormControl, InputLabel, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, TablePagination, TableSortLabel, CircularProgress,
-  Button, InputAdornment, Chip, Paper, useTheme
+  Button, InputAdornment, Chip, Paper, Alert, useTheme
 } from '@mui/material'
 import SearchIcon from '@mui/icons-material/Search'
 import AddIcon from '@mui/icons-material/Add'
+import WarningAmberIcon from '@mui/icons-material/WarningAmber'
 import axios from 'axios'
 
 import { PriorityBadge, StatusBadge, SLABadge } from '../components/ui/SemanticBadges'
 import EmployeeTicketDetailsModal from '../components/EmployeeTicketDetailsModal'
 
-const API_BASE = 'http://localhost:8000'
+const API_BASE = import.meta.env.VITE_API_BASE ?? ''
 
 type SortField = 'title' | 'status' | 'priority' | 'created_at' | 'predicted_team' | 'assigned_team'
 type SortDir = 'asc' | 'desc'
@@ -83,9 +84,10 @@ export default function TicketsPage() {
       }
 
       const res = await axios.get(`${API_BASE}/ticket/all`, { headers })
-      setTickets(res.data)
+      setTickets(Array.isArray(res.data) ? res.data : [])
     } catch (e) {
       console.error('Error fetching tickets:', e)
+      setTickets([])
     } finally {
       setLoading(false)
     }
@@ -125,7 +127,7 @@ export default function TicketsPage() {
       setSelectedTicketId(ticketId)
       setEmployeeModalOpen(true)
     } else {
-      navigate('/agent-portal')
+      navigate(`/tickets/${ticketId}`)
     }
   }
 
@@ -226,9 +228,11 @@ export default function TicketsPage() {
                             {displayId}
                           </TableCell>
                         <TableCell>
-                          <Typography variant="body2" fontWeight={600} style={{ color: theme.palette.text.primary }} noWrap sx={{ maxWidth: 340 }}>
-                            {t.title}
-                          </Typography>
+                          <Box display="flex" alignItems="center" gap={1}>
+                            <Typography variant="body2" fontWeight={600} style={{ color: theme.palette.text.primary }} noWrap sx={{ maxWidth: 300 }}>
+                              {t.title}
+                            </Typography>
+                          </Box>
                           <Typography variant="caption" style={{ color: theme.palette.text.secondary }} noWrap sx={{ maxWidth: 340, display: 'block' }}>
                             {t.description}
                           </Typography>

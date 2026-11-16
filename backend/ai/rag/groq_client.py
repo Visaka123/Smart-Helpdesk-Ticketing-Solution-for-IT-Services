@@ -42,7 +42,15 @@ def is_rate_limit_or_quota_error(error: Exception) -> bool:
         return True
     return False
 
-def ask_llm(prompt: str, system_prompt: Optional[str] = None, model: str = "llama-3.3-70b-versatile") -> Optional[str]:
+def is_model_not_found_error(error: Exception) -> bool:
+    err_str = str(error).lower()
+    return "404" in err_str or "model_not_found" in err_str or "model not found" in err_str
+
+def is_invalid_api_key_error(error: Exception) -> bool:
+    err_str = str(error).lower()
+    return "401" in err_str or "invalid api key" in err_str or "authentication" in err_str
+
+def ask_llm(prompt: str, system_prompt: Optional[str] = None, model: str = "openai/gpt-oss-20b") -> Optional[str]:
     """
     Query Groq LLM with API Key Rotation and Rate-Limit (429) Handling.
     Rotates to the next available API key if 429 Rate Limit occurs.
@@ -74,7 +82,13 @@ def ask_llm(prompt: str, system_prompt: Optional[str] = None, model: str = "llam
                     return content.strip()
             logger.warning(f"[GROQ] Empty choice response received from Key #{idx + 1}.")
         except Exception as e:
-            if is_rate_limit_or_quota_error(e):
+            if is_model_not_found_error(e):
+                logger.error(f"[GROQ_404_MODEL_NOT_FOUND] Model '{model}' not found: {e}")
+                return None
+            elif is_invalid_api_key_error(e):
+                logger.error(f"[GROQ_401_INVALID_KEY] Key #{idx + 1} is invalid: {e}")
+                continue
+            elif is_rate_limit_or_quota_error(e):
                 logger.warning(f"[GROQ_RATE_LIMIT_429] Key #{idx + 1} hit 429 Rate Limit: {e}. Rotating to next API key in pool...")
                 continue
             else:

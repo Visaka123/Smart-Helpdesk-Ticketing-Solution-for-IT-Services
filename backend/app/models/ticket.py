@@ -67,3 +67,4 @@ class Ticket(Base):
     is_sla_breached = Column(Boolean, default=False)
     escalated_to_manager = Column(Boolean, default=False)
     escalated_at = Column(DateTime, nullable=True)
+    is_demo = Column(Boolean, default=False, nullable=True)

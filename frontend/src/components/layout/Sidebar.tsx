@@ -7,25 +7,32 @@ import AddCircleIcon from '@mui/icons-material/AddCircle'
 import SmartToyIcon from '@mui/icons-material/SmartToy'
 import SupportAgentIcon from '@mui/icons-material/SupportAgent'
 import AssessmentIcon from '@mui/icons-material/Assessment'
+import BeachAccessIcon from '@mui/icons-material/BeachAccess'
+import ScheduleIcon from '@mui/icons-material/Schedule'
 
 const drawerWidth = 240
 
 interface SidebarProps {
   currentRole: string
+  viewingAsAgent?: string | null
 }
 
-export default function Sidebar({ currentRole }: SidebarProps) {
+export default function Sidebar({ currentRole, viewingAsAgent }: SidebarProps) {
   const navigate = useNavigate()
   const location = useLocation()
   const theme = useTheme()
 
+  const effectiveRole = viewingAsAgent ? 'agent' : currentRole
+
   const navItems = [
     { label: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard', roles: ['employee', 'agent', 'manager'] },
     { label: 'Create Ticket', icon: <AddCircleIcon />, path: '/tickets/create', roles: ['employee', 'agent', 'manager'] },
-    { label: currentRole === 'employee' ? 'My Tickets' : 'All Tickets', icon: <ConfirmationNumberIcon />, path: '/tickets', roles: ['employee', 'agent', 'manager'] },
+    { label: effectiveRole === 'employee' ? 'My Tickets' : 'All Tickets', icon: <ConfirmationNumberIcon />, path: '/tickets', roles: ['employee', 'agent', 'manager'] },
     { label: 'Agent Workspace', icon: <SupportAgentIcon />, path: '/agent-portal', roles: ['agent', 'manager'] },
     { label: 'RAG Chatbot', icon: <SmartToyIcon />, path: '/chatbot', roles: ['employee', 'agent', 'manager'] },
     { label: 'SLA Analytics', icon: <AssessmentIcon />, path: '/analytics', roles: ['manager', 'agent'] },
+    { label: 'Leave Requests', icon: <BeachAccessIcon />, path: '/leave', roles: ['agent', 'manager'] },
+    { label: 'Shifts & On-Call', icon: <ScheduleIcon />, path: '/shifts', roles: ['manager'] },
   ]
 
   return (
@@ -50,7 +57,7 @@ export default function Sidebar({ currentRole }: SidebarProps) {
       <Divider style={{ borderColor: theme.palette.divider }} />
       <List>
         {navItems
-          .filter((item) => item.roles.includes(currentRole))
+          .filter((item) => item.roles.includes(effectiveRole))
           .map((item) => {
             const isActive = location.pathname === item.path
             return (

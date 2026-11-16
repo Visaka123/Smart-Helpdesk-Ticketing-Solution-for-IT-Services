@@ -1,17 +1,27 @@
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from apscheduler.schedulers.background import BackgroundScheduler
+import threading
+import time
+
+try:
+    from apscheduler.schedulers.background import BackgroundScheduler
+    scheduler = BackgroundScheduler()
+    HAS_APSCHEDULER = True
+except ImportError:
+    scheduler = None
+    HAS_APSCHEDULER = False
 
 from app.database.database import engine, Base
 from app.auth.routes import router as auth_router
 from app.tickets.routes import router as ticket_router
 from app.chatbot.routes import router as chatbot_router
 from app.agent.routes import router as agent_router
+from app.availability.routes import router as availability_router
 from app.core.embeddings import get_shared_embedder
 from app.sla.service import audit_and_trigger_sla_escalations
-
-scheduler = BackgroundScheduler()
+from app.availability.scheduler import reroute_on_leave_approval, handover_before_shift_end
+from app.availability.sync import sync_hr_leaves_job
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -21,14 +31,51 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"[STARTUP WARN] Shared embedder pre-load notice: {e}")
 
-    # Run SLA audit every 5 minutes automatically
-    scheduler.add_job(audit_and_trigger_sla_escalations, "interval", minutes=5, id="sla_audit")
-    scheduler.start()
-    print("[STARTUP] SLA background scheduler started — runs every 5 minutes.")
+    stop_event = threading.Event()
+    if HAS_APSCHEDULER and scheduler:
+        # Run SLA audit and availability checks automatically
+        scheduler.add_job(audit_and_trigger_sla_escalations, "interval", minutes=5,  id="sla_audit")
+        scheduler.add_job(reroute_on_leave_approval,          "interval", minutes=5,  id="leave_reroute")
+        scheduler.add_job(handover_before_shift_end,           "interval", minutes=5,  id="shift_handover")
+        scheduler.add_job(sync_hr_leaves_job,                 "interval", minutes=15, id="hr_leave_sync")
+        scheduler.start()
+        print("[STARTUP] SLA, Availability, and HR Leave Sync (every 15 min) schedulers started.")
+    else:
+        def background_loop():
+            tick_count = 0
+            while not stop_event.is_set():
+                stop_event.wait(300)
+                if stop_event.is_set():
+                    break
+                tick_count += 1
+                try:
+                    audit_and_trigger_sla_escalations()
+                except Exception as e:
+                    print(f"[BACKGROUND SLA WARN] {e}")
+                try:
+                    reroute_on_leave_approval()
+                except Exception as e:
+                    print(f"[BACKGROUND LEAVE WARN] {e}")
+                try:
+                    handover_before_shift_end()
+                except Exception as e:
+                    print(f"[BACKGROUND SHIFT WARN] {e}")
+                if tick_count % 3 == 0:  # Every 15 minutes
+                    try:
+                        sync_hr_leaves_job()
+                    except Exception as e:
+                        print(f"[BACKGROUND HR SYNC WARN] {e}")
+
+        bg_thread = threading.Thread(target=background_loop, daemon=True)
+        bg_thread.start()
+        print("[STARTUP] Built-in background worker loop started (APScheduler fallback).")
 
     yield
 
-    scheduler.shutdown(wait=False)
+    if HAS_APSCHEDULER and scheduler:
+        scheduler.shutdown(wait=False)
+    else:
+        stop_event.set()
     print("[SHUTDOWN] Application shutdown complete.")
 
 # Create database tables if they do not exist
@@ -49,10 +96,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(auth_router, prefix="/auth", tags=["Auth"])
-app.include_router(ticket_router, prefix="/ticket", tags=["Ticket"])
-app.include_router(chatbot_router, prefix="/chatbot", tags=["Chatbot"])
-app.include_router(agent_router, prefix="/agent", tags=["Agent / Support"])
+app.include_router(auth_router,         prefix="/auth",         tags=["Auth"])
+app.include_router(ticket_router,        prefix="/ticket",        tags=["Ticket"])
+app.include_router(chatbot_router,       prefix="/chatbot",       tags=["Chatbot"])
+app.include_router(agent_router,         prefix="/agent",         tags=["Agent / Support"])
+app.include_router(availability_router,  prefix="/availability",  tags=["Availability"])
 
 @app.get("/docs/download/{filename}")
 def download_sop_document(filename: str):

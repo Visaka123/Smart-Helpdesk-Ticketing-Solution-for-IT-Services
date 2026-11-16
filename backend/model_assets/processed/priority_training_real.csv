@@ -1,0 +1,1096 @@
+description,priority
+"Production database cluster is completely down, all services offline",critical
+"URGENT: Production database cluster is completely down, all services offline",critical
+"User reported: Production database cluster is completely down, all services offline",critical
+"Ticket: production database cluster is completely down, all services offline",critical
+"Company-wide email outage, no one can send or receive mail",critical
+"URGENT: Company-wide email outage, no one can send or receive mail",critical
+"User reported: Company-wide email outage, no one can send or receive mail",critical
+"Ticket: company-wide email outage, no one can send or receive mail",critical
+Ransomware detected encrypting files on the finance department fileserver,critical
+URGENT: Ransomware detected encrypting files on the finance department fileserver,critical
+User reported: Ransomware detected encrypting files on the finance department fileserver,critical
+Ticket: ransomware detected encrypting files on the finance department fileserver,critical
+"Data center power failure, all production servers unreachable",critical
+"URGENT: Data center power failure, all production servers unreachable",critical
+"User reported: Data center power failure, all production servers unreachable",critical
+"Ticket: data center power failure, all production servers unreachable",critical
+"Payment processing system is down, customers cannot complete any purchases",critical
+"URGENT: Payment processing system is down, customers cannot complete any purchases",critical
+"User reported: Payment processing system is down, customers cannot complete any purchases",critical
+"Ticket: payment processing system is down, customers cannot complete any purchases",critical
+"Confirmed security breach, attacker has access to production database",critical
+"URGENT: Confirmed security breach, attacker has access to production database",critical
+"User reported: Confirmed security breach, attacker has access to production database",critical
+"Ticket: confirmed security breach, attacker has access to production database",critical
+"Entire VPN gateway is down, no remote employees can connect",critical
+"URGENT: Entire VPN gateway is down, no remote employees can connect",critical
+"User reported: Entire VPN gateway is down, no remote employees can connect",critical
+"Ticket: entire vpn gateway is down, no remote employees can connect",critical
+Core banking application returning 500 errors for all users company-wide,critical
+URGENT: Core banking application returning 500 errors for all users company-wide,critical
+User reported: Core banking application returning 500 errors for all users company-wide,critical
+Ticket: core banking application returning 500 errors for all users company-wide,critical
+Primary and backup internet circuits both down at headquarters,critical
+URGENT: Primary and backup internet circuits both down at headquarters,critical
+User reported: Primary and backup internet circuits both down at headquarters,critical
+Ticket: primary and backup internet circuits both down at headquarters,critical
+SAP production system completely inaccessible for all departments,critical
+URGENT: SAP production system completely inaccessible for all departments,critical
+User reported: SAP production system completely inaccessible for all departments,critical
+Ticket: sap production system completely inaccessible for all departments,critical
+Critical data loss detected after failed migration script execution,critical
+URGENT: Critical data loss detected after failed migration script execution,critical
+User reported: Critical data loss detected after failed migration script execution,critical
+Ticket: critical data loss detected after failed migration script execution,critical
+"Active Directory domain controller down, no one can log in anywhere",critical
+"URGENT: Active Directory domain controller down, no one can log in anywhere",critical
+"User reported: Active Directory domain controller down, no one can log in anywhere",critical
+"Ticket: active directory domain controller down, no one can log in anywhere",critical
+"DDoS attack overwhelming public-facing web servers, site unreachable",critical
+"URGENT: DDoS attack overwhelming public-facing web servers, site unreachable",critical
+"User reported: DDoS attack overwhelming public-facing web servers, site unreachable",critical
+"Ticket: ddos attack overwhelming public-facing web servers, site unreachable",critical
+"Fire suppression system triggered in server room, emergency shutdown initiated",critical
+"URGENT: Fire suppression system triggered in server room, emergency shutdown initiated",critical
+"User reported: Fire suppression system triggered in server room, emergency shutdown initiated",critical
+"Ticket: fire suppression system triggered in server room, emergency shutdown initiated",critical
+All point-of-sale terminals down across every retail location,critical
+URGENT: All point-of-sale terminals down across every retail location,critical
+User reported: All point-of-sale terminals down across every retail location,critical
+Ticket: all point-of-sale terminals down across every retail location,critical
+"Kubernetes cluster crash-looping, entire production environment offline",critical
+"URGENT: Kubernetes cluster crash-looping, entire production environment offline",critical
+"User reported: Kubernetes cluster crash-looping, entire production environment offline",critical
+"Ticket: kubernetes cluster crash-looping, entire production environment offline",critical
+"Customer-facing API completely down, all integrations failing",critical
+"URGENT: Customer-facing API completely down, all integrations failing",critical
+"User reported: Customer-facing API completely down, all integrations failing",critical
+"Ticket: customer-facing api completely down, all integrations failing",critical
+Backup system failure discovered during attempted disaster recovery,critical
+URGENT: Backup system failure discovered during attempted disaster recovery,critical
+User reported: Backup system failure discovered during attempted disaster recovery,critical
+Ticket: backup system failure discovered during attempted disaster recovery,critical
+"Unauthorized admin account created, suspected active compromise in progress",critical
+"URGENT: Unauthorized admin account created, suspected active compromise in progress",critical
+"User reported: Unauthorized admin account created, suspected active compromise in progress",critical
+"Ticket: unauthorized admin account created, suspected active compromise in progress",critical
+Core network switch failure taking down entire office building connectivity,critical
+URGENT: Core network switch failure taking down entire office building connectivity,critical
+User reported: Core network switch failure taking down entire office building connectivity,critical
+Ticket: core network switch failure taking down entire office building connectivity,critical
+"Production Kafka cluster down, no messages processing across all services",critical
+"URGENT: Production Kafka cluster down, no messages processing across all services",critical
+"User reported: Production Kafka cluster down, no messages processing across all services",critical
+"Ticket: production kafka cluster down, no messages processing across all services",critical
+"Entire authentication service down, no employees can log into any system",critical
+"URGENT: Entire authentication service down, no employees can log into any system",critical
+"User reported: Entire authentication service down, no employees can log into any system",critical
+"Ticket: entire authentication service down, no employees can log into any system",critical
+Critical vulnerability actively being exploited on internet-facing server,critical
+URGENT: Critical vulnerability actively being exploited on internet-facing server,critical
+User reported: Critical vulnerability actively being exploited on internet-facing server,critical
+Ticket: critical vulnerability actively being exploited on internet-facing server,critical
+"Full site outage reported by monitoring, all regions affected",critical
+"URGENT: Full site outage reported by monitoring, all regions affected",critical
+"User reported: Full site outage reported by monitoring, all regions affected",critical
+"Ticket: full site outage reported by monitoring, all regions affected",critical
+"Executive team locked out during live board meeting, system-wide login failure",critical
+"URGENT: Executive team locked out during live board meeting, system-wide login failure",critical
+"User reported: Executive team locked out during live board meeting, system-wide login failure",critical
+"Ticket: executive team locked out during live board meeting, system-wide login failure",critical
+Emergency: our main website has been down for the last 20 minutes,critical
+URGENT: Emergency: our main website has been down for the last 20 minutes,critical
+User reported: Emergency: our main website has been down for the last 20 minutes,critical
+Ticket: emergency: our main website has been down for the last 20 minutes,critical
+"All hands needed, checkout system is completely broken, losing sales every minute",critical
+"URGENT: All hands needed, checkout system is completely broken, losing sales every minute",critical
+"User reported: All hands needed, checkout system is completely broken, losing sales every minute",critical
+"Ticket: all hands needed, checkout system is completely broken, losing sales every minute",critical
+"Entire call center phone system down, cannot receive any customer calls",critical
+"URGENT: Entire call center phone system down, cannot receive any customer calls",critical
+"User reported: Entire call center phone system down, cannot receive any customer calls",critical
+"Ticket: entire call center phone system down, cannot receive any customer calls",critical
+"Data breach confirmed, customer PII exposed in public S3 bucket",critical
+"URGENT: Data breach confirmed, customer PII exposed in public S3 bucket",critical
+"User reported: Data breach confirmed, customer PII exposed in public S3 bucket",critical
+"Ticket: data breach confirmed, customer pii exposed in public s3 bucket",critical
+"Total loss of connectivity to primary data center, failover not triggering",critical
+"URGENT: Total loss of connectivity to primary data center, failover not triggering",critical
+"User reported: Total loss of connectivity to primary data center, failover not triggering",critical
+"Ticket: total loss of connectivity to primary data center, failover not triggering",critical
+Air conditioning failure in server room causing servers to overheat and shut down,critical
+URGENT: Air conditioning failure in server room causing servers to overheat and shut down,critical
+User reported: Air conditioning failure in server room causing servers to overheat and shut down,critical
+Ticket: air conditioning failure in server room causing servers to overheat and shut down,critical
+Every employee simultaneously locked out after failed SSO configuration push,critical
+URGENT: Every employee simultaneously locked out after failed SSO configuration push,critical
+User reported: Every employee simultaneously locked out after failed SSO configuration push,critical
+Ticket: every employee simultaneously locked out after failed sso configuration push,critical
+"Production release rollback failed, application is now completely unusable",critical
+"URGENT: Production release rollback failed, application is now completely unusable",critical
+"User reported: Production release rollback failed, application is now completely unusable",critical
+"Ticket: production release rollback failed, application is now completely unusable",critical
+"Malicious insider deleted production tables, need immediate restore",critical
+"URGENT: Malicious insider deleted production tables, need immediate restore",critical
+"User reported: Malicious insider deleted production tables, need immediate restore",critical
+"Ticket: malicious insider deleted production tables, need immediate restore",critical
+Global outage affecting every regional office simultaneously,critical
+URGENT: Global outage affecting every regional office simultaneously,critical
+User reported: Global outage affecting every regional office simultaneously,critical
+Ticket: global outage affecting every regional office simultaneously,critical
+"Core message queue broken, orders are being silently dropped company-wide",critical
+"URGENT: Core message queue broken, orders are being silently dropped company-wide",critical
+"User reported: Core message queue broken, orders are being silently dropped company-wide",critical
+"Ticket: core message queue broken, orders are being silently dropped company-wide",critical
+Cloud provider region outage taking down our entire infrastructure,critical
+URGENT: Cloud provider region outage taking down our entire infrastructure,critical
+User reported: Cloud provider region outage taking down our entire infrastructure,critical
+Ticket: cloud provider region outage taking down our entire infrastructure,critical
+"Corrupted database backup discovered, no viable restore point exists",critical
+"URGENT: Corrupted database backup discovered, no viable restore point exists",critical
+"User reported: Corrupted database backup discovered, no viable restore point exists",critical
+"Ticket: corrupted database backup discovered, no viable restore point exists",critical
+Load balancer misconfiguration routing 100% of traffic to a dead server,critical
+URGENT: Load balancer misconfiguration routing 100% of traffic to a dead server,critical
+User reported: Load balancer misconfiguration routing 100% of traffic to a dead server,critical
+Ticket: load balancer misconfiguration routing 100% of traffic to a dead server,critical
+"Critical patch failed mid-deployment, half the fleet is now unreachable",critical
+"URGENT: Critical patch failed mid-deployment, half the fleet is now unreachable",critical
+"User reported: Critical patch failed mid-deployment, half the fleet is now unreachable",critical
+"Ticket: critical patch failed mid-deployment, half the fleet is now unreachable",critical
+"Root certificate expired unexpectedly, breaking all internal service communication",critical
+"URGENT: Root certificate expired unexpectedly, breaking all internal service communication",critical
+"User reported: Root certificate expired unexpectedly, breaking all internal service communication",critical
+"Ticket: root certificate expired unexpectedly, breaking all internal service communication",critical
+"This is urgent, nobody in the company can access email or Slack right now",critical
+"URGENT: This is urgent, nobody in the company can access email or Slack right now",critical
+"User reported: This is urgent, nobody in the company can access email or Slack right now",critical
+"Ticket: this is urgent, nobody in the company can access email or slack right now",critical
+Our SaaS platform is completely down for every single customer,critical
+URGENT: Our SaaS platform is completely down for every single customer,critical
+User reported: Our SaaS platform is completely down for every single customer,critical
+Ticket: our saas platform is completely down for every single customer,critical
+"Server room flooding reported, emergency shutdown of all hardware required",critical
+"URGENT: Server room flooding reported, emergency shutdown of all hardware required",critical
+"User reported: Server room flooding reported, emergency shutdown of all hardware required",critical
+"Ticket: server room flooding reported, emergency shutdown of all hardware required",critical
+Entire finance system offline the morning of month-end close,critical
+URGENT: Entire finance system offline the morning of month-end close,critical
+User reported: Entire finance system offline the morning of month-end close,critical
+Ticket: entire finance system offline the morning of month-end close,critical
+Suspected supply-chain compromise in a critical software dependency,critical
+URGENT: Suspected supply-chain compromise in a critical software dependency,critical
+User reported: Suspected supply-chain compromise in a critical software dependency,critical
+Ticket: suspected supply-chain compromise in a critical software dependency,critical
+"Mass password reset triggered accidentally, locking out the entire org",critical
+"URGENT: Mass password reset triggered accidentally, locking out the entire org",critical
+"User reported: Mass password reset triggered accidentally, locking out the entire org",critical
+"Ticket: mass password reset triggered accidentally, locking out the entire org",critical
+"Primary Kubernetes control plane unreachable, cannot deploy or scale anything",critical
+"URGENT: Primary Kubernetes control plane unreachable, cannot deploy or scale anything",critical
+"User reported: Primary Kubernetes control plane unreachable, cannot deploy or scale anything",critical
+"Ticket: primary kubernetes control plane unreachable, cannot deploy or scale anything",critical
+Every microservice returning errors after a bad config push to production,critical
+URGENT: Every microservice returning errors after a bad config push to production,critical
+User reported: Every microservice returning errors after a bad config push to production,critical
+Ticket: every microservice returning errors after a bad config push to production,critical
+Confirmed ransomware note found on multiple servers across the network,critical
+URGENT: Confirmed ransomware note found on multiple servers across the network,critical
+User reported: Confirmed ransomware note found on multiple servers across the network,critical
+Ticket: confirmed ransomware note found on multiple servers across the network,critical
+24/7 monitoring alert: uptime dropped to 0% across all production endpoints,critical
+URGENT: 24/7 monitoring alert: uptime dropped to 0% across all production endpoints,critical
+User reported: 24/7 monitoring alert: uptime dropped to 0% across all production endpoints,critical
+Ticket: 24/7 monitoring alert: uptime dropped to 0% across all production endpoints,critical
+"Customer support queue flooded, entire platform reported down by users",critical
+"URGENT: Customer support queue flooded, entire platform reported down by users",critical
+"User reported: Customer support queue flooded, entire platform reported down by users",critical
+"Ticket: customer support queue flooded, entire platform reported down by users",critical
+"Total loss of access to our source code repository, cannot deploy fixes",critical
+"URGENT: Total loss of access to our source code repository, cannot deploy fixes",critical
+"User reported: Total loss of access to our source code repository, cannot deploy fixes",critical
+"Ticket: total loss of access to our source code repository, cannot deploy fixes",critical
+Building-wide power outage has taken every on-prem system offline,critical
+URGENT: Building-wide power outage has taken every on-prem system offline,critical
+User reported: Building-wide power outage has taken every on-prem system offline,critical
+Ticket: building-wide power outage has taken every on-prem system offline,critical
+Emergency escalation: trading platform down during market hours,critical
+URGENT: Emergency escalation: trading platform down during market hours,critical
+User reported: Emergency escalation: trading platform down during market hours,critical
+Ticket: emergency escalation: trading platform down during market hours,critical
+"Critical infrastructure certificate revoked, all HTTPS traffic now failing",critical
+"URGENT: Critical infrastructure certificate revoked, all HTTPS traffic now failing",critical
+"User reported: Critical infrastructure certificate revoked, all HTTPS traffic now failing",critical
+"Ticket: critical infrastructure certificate revoked, all https traffic now failing",critical
+Massive spike in 500 errors correlating with total service unavailability,critical
+URGENT: Massive spike in 500 errors correlating with total service unavailability,critical
+User reported: Massive spike in 500 errors correlating with total service unavailability,critical
+Ticket: massive spike in 500 errors correlating with total service unavailability,critical
+Entire engineering org locked out of GitHub after a token compromise,critical
+URGENT: Entire engineering org locked out of GitHub after a token compromise,critical
+User reported: Entire engineering org locked out of GitHub after a token compromise,critical
+Ticket: entire engineering org locked out of github after a token compromise,critical
+"Nobody can process any orders, the entire e-commerce platform is unreachable",critical
+"URGENT: Nobody can process any orders, the entire e-commerce platform is unreachable",critical
+"User reported: Nobody can process any orders, the entire e-commerce platform is unreachable",critical
+"Ticket: nobody can process any orders, the entire e-commerce platform is unreachable",critical
+"All backups corrupted simultaneously, disaster recovery plan has failed",critical
+"URGENT: All backups corrupted simultaneously, disaster recovery plan has failed",critical
+"User reported: All backups corrupted simultaneously, disaster recovery plan has failed",critical
+"Ticket: all backups corrupted simultaneously, disaster recovery plan has failed",critical
+"Full network partition between our two data centers, no failover possible",critical
+"URGENT: Full network partition between our two data centers, no failover possible",critical
+"User reported: Full network partition between our two data centers, no failover possible",critical
+"Ticket: full network partition between our two data centers, no failover possible",critical
+Confirmed zero-day exploit actively being used against our production servers,critical
+URGENT: Confirmed zero-day exploit actively being used against our production servers,critical
+User reported: Confirmed zero-day exploit actively being used against our production servers,critical
+Ticket: confirmed zero-day exploit actively being used against our production servers,critical
+"Company intranet, email, and VPN are all down at the same time",critical
+"URGENT: Company intranet, email, and VPN are all down at the same time",critical
+"User reported: Company intranet, email, and VPN are all down at the same time",critical
+"Ticket: company intranet, email, and vpn are all down at the same time",critical
+Immediate danger: unauthorized wire transfer detected from compromised finance account,critical
+URGENT: Immediate danger: unauthorized wire transfer detected from compromised finance account,critical
+User reported: Immediate danger: unauthorized wire transfer detected from compromised finance account,critical
+Ticket: immediate danger: unauthorized wire transfer detected from compromised finance account,critical
+Entire user base reporting inability to log in simultaneously across regions,critical
+URGENT: Entire user base reporting inability to log in simultaneously across regions,critical
+User reported: Entire user base reporting inability to log in simultaneously across regions,critical
+Ticket: entire user base reporting inability to log in simultaneously across regions,critical
+prod db down,critical
+URGENT: prod db down,critical
+User reported: prod db down,critical
+Ticket: prod db down,critical
+entire site down,critical
+URGENT: entire site down,critical
+User reported: entire site down,critical
+Ticket: entire site down,critical
+all servers offline,critical
+URGENT: all servers offline,critical
+User reported: all servers offline,critical
+Ticket: all servers offline,critical
+company email down,critical
+URGENT: company email down,critical
+User reported: company email down,critical
+Ticket: company email down,critical
+datacenter down,critical
+URGENT: datacenter down,critical
+User reported: datacenter down,critical
+Ticket: datacenter down,critical
+total system outage,critical
+URGENT: total system outage,critical
+User reported: total system outage,critical
+Ticket: total system outage,critical
+"Respected team, kindly be informed that our production database has been completely unreachable since this morning",critical
+"URGENT: Respected team, kindly be informed that our production database has been completely unreachable since this morning",critical
+"User reported: Respected team, kindly be informed that our production database has been completely unreachable since this morning",critical
+"Ticket: respected team, kindly be informed that our production database has been completely unreachable since this morning",critical
+"Greetings support team, I regret to inform you that the entire office network appears to be down company-wide",critical
+"URGENT: Greetings support team, I regret to inform you that the entire office network appears to be down company-wide",critical
+"User reported: Greetings support team, I regret to inform you that the entire office network appears to be down company-wide",critical
+"Ticket: greetings support team, i regret to inform you that the entire office network appears to be down company-wide",critical
+"Dear support team, please be advised that our customer checkout payment system has experienced a total outage",critical
+"URGENT: Dear support team, please be advised that our customer checkout payment system has experienced a total outage",critical
+"User reported: Dear support team, please be advised that our customer checkout payment system has experienced a total outage",critical
+"Ticket: dear support team, please be advised that our customer checkout payment system has experienced a total outage",critical
+"Respected sir, kindly look into this urgently as all production servers are offline and returning 500 errors",critical
+"URGENT: Respected sir, kindly look into this urgently as all production servers are offline and returning 500 errors",critical
+"User reported: Respected sir, kindly look into this urgently as all production servers are offline and returning 500 errors",critical
+"Ticket: respected sir, kindly look into this urgently as all production servers are offline and returning 500 errors",critical
+"Good morning team, please assist immediately as ransomware has encrypted all files on the primary storage server",critical
+"URGENT: Good morning team, please assist immediately as ransomware has encrypted all files on the primary storage server",critical
+"User reported: Good morning team, please assist immediately as ransomware has encrypted all files on the primary storage server",critical
+"Ticket: good morning team, please assist immediately as ransomware has encrypted all files on the primary storage server",critical
+"Respected team, kindly note that no employees are able to log in due to active directory server crash",critical
+"URGENT: Respected team, kindly note that no employees are able to log in due to active directory server crash",critical
+"User reported: Respected team, kindly note that no employees are able to log in due to active directory server crash",critical
+"Ticket: respected team, kindly note that no employees are able to log in due to active directory server crash",critical
+"Honored support team, please be informed that our core banking cluster has completely halted operation",critical
+"URGENT: Honored support team, please be informed that our core banking cluster has completely halted operation",critical
+"User reported: Honored support team, please be informed that our core banking cluster has completely halted operation",critical
+"Ticket: honored support team, please be informed that our core banking cluster has completely halted operation",critical
+"VPN connection fails with certificate error, cannot work remotely",high
+"URGENT: VPN connection fails with certificate error, cannot work remotely",high
+"User reported: VPN connection fails with certificate error, cannot work remotely",high
+"Ticket: vpn connection fails with certificate error, cannot work remotely",high
+"SAP SU53 authorization denied, blocked from processing purchase orders",high
+"URGENT: SAP SU53 authorization denied, blocked from processing purchase orders",high
+"User reported: SAP SU53 authorization denied, blocked from processing purchase orders",high
+"Ticket: sap su53 authorization denied, blocked from processing purchase orders",high
+"Cannot access shared drive, entire team blocked from project files",high
+"URGENT: Cannot access shared drive, entire team blocked from project files",high
+"User reported: Cannot access shared drive, entire team blocked from project files",high
+"Ticket: cannot access shared drive, entire team blocked from project files",high
+"Okta MFA push notifications not arriving, cannot log into any system",high
+"URGENT: Okta MFA push notifications not arriving, cannot log into any system",high
+"User reported: Okta MFA push notifications not arriving, cannot log into any system",high
+"Ticket: okta mfa push notifications not arriving, cannot log into any system",high
+Server returning intermittent 504 gateway timeout errors for one application,high
+URGENT: Server returning intermittent 504 gateway timeout errors for one application,high
+User reported: Server returning intermittent 504 gateway timeout errors for one application,high
+Ticket: server returning intermittent 504 gateway timeout errors for one application,high
+Finance team locked out of expense reporting system before month-end deadline,high
+URGENT: Finance team locked out of expense reporting system before month-end deadline,high
+User reported: Finance team locked out of expense reporting system before month-end deadline,high
+Ticket: finance team locked out of expense reporting system before month-end deadline,high
+Suspicious phishing email with credential harvesting link reported by multiple users,high
+URGENT: Suspicious phishing email with credential harvesting link reported by multiple users,high
+User reported: Suspicious phishing email with credential harvesting link reported by multiple users,high
+Ticket: suspicious phishing email with credential harvesting link reported by multiple users,high
+"Single production microservice crash-looping, degraded but not fully down",high
+"URGENT: Single production microservice crash-looping, degraded but not fully down",high
+"User reported: Single production microservice crash-looping, degraded but not fully down",high
+"Ticket: single production microservice crash-looping, degraded but not fully down",high
+"Engineering team cannot deploy, CI/CD pipeline failing on every build",high
+"URGENT: Engineering team cannot deploy, CI/CD pipeline failing on every build",high
+"User reported: Engineering team cannot deploy, CI/CD pipeline failing on every build",high
+"Ticket: engineering team cannot deploy, ci/cd pipeline failing on every build",high
+Database replication lag causing stale data on customer dashboard,high
+URGENT: Database replication lag causing stale data on customer dashboard,high
+User reported: Database replication lag causing stale data on customer dashboard,high
+Ticket: database replication lag causing stale data on customer dashboard,high
+"Executive laptop compromised with malware, isolating from network",high
+"URGENT: Executive laptop compromised with malware, isolating from network",high
+"User reported: Executive laptop compromised with malware, isolating from network",high
+"Ticket: executive laptop compromised with malware, isolating from network",high
+Access denied error blocking entire team from CRM system,high
+URGENT: Access denied error blocking entire team from CRM system,high
+User reported: Access denied error blocking entire team from CRM system,high
+Ticket: access denied error blocking entire team from crm system,high
+High-priority customer escalation blocked by billing system error,high
+URGENT: High-priority customer escalation blocked by billing system error,high
+User reported: High-priority customer escalation blocked by billing system error,high
+Ticket: high-priority customer escalation blocked by billing system error,high
+"Password reset not working, employee locked out before critical deadline",high
+"URGENT: Password reset not working, employee locked out before critical deadline",high
+"User reported: Password reset not working, employee locked out before critical deadline",high
+"Ticket: password reset not working, employee locked out before critical deadline",high
+"SSL certificate expired on customer-facing portal, users seeing security warnings",high
+"URGENT: SSL certificate expired on customer-facing portal, users seeing security warnings",high
+"User reported: SSL certificate expired on customer-facing portal, users seeing security warnings",high
+"Ticket: ssl certificate expired on customer-facing portal, users seeing security warnings",high
+Significant packet loss on WAN link affecting entire branch office,high
+URGENT: Significant packet loss on WAN link affecting entire branch office,high
+User reported: Significant packet loss on WAN link affecting entire branch office,high
+Ticket: significant packet loss on wan link affecting entire branch office,high
+"SAP GRC access request stuck, blocking new hire from working",high
+"URGENT: SAP GRC access request stuck, blocking new hire from working",high
+"User reported: SAP GRC access request stuck, blocking new hire from working",high
+"Ticket: sap grc access request stuck, blocking new hire from working",high
+"Cannot process payroll, HR system throwing errors before pay run deadline",high
+"URGENT: Cannot process payroll, HR system throwing errors before pay run deadline",high
+"User reported: Cannot process payroll, HR system throwing errors before pay run deadline",high
+"Ticket: cannot process payroll, hr system throwing errors before pay run deadline",high
+"Server disk space critically low, application performance severely degraded",high
+"URGENT: Server disk space critically low, application performance severely degraded",high
+"User reported: Server disk space critically low, application performance severely degraded",high
+"Ticket: server disk space critically low, application performance severely degraded",high
+Two-factor authentication broken for entire sales department,high
+URGENT: Two-factor authentication broken for entire sales department,high
+User reported: Two-factor authentication broken for entire sales department,high
+Ticket: two-factor authentication broken for entire sales department,high
+"Key vendor integration failing, blocking order fulfillment process",high
+"URGENT: Key vendor integration failing, blocking order fulfillment process",high
+"User reported: Key vendor integration failing, blocking order fulfillment process",high
+"Ticket: key vendor integration failing, blocking order fulfillment process",high
+Manager unable to approve time-sensitive budget request due to system error,high
+URGENT: Manager unable to approve time-sensitive budget request due to system error,high
+User reported: Manager unable to approve time-sensitive budget request due to system error,high
+Ticket: manager unable to approve time-sensitive budget request due to system error,high
+Firewall misconfiguration blocking legitimate traffic to critical application,high
+URGENT: Firewall misconfiguration blocking legitimate traffic to critical application,high
+User reported: Firewall misconfiguration blocking legitimate traffic to critical application,high
+Ticket: firewall misconfiguration blocking legitimate traffic to critical application,high
+"Data sync job failing repeatedly, reports showing incorrect financial figures",high
+"URGENT: Data sync job failing repeatedly, reports showing incorrect financial figures",high
+"User reported: Data sync job failing repeatedly, reports showing incorrect financial figures",high
+"Ticket: data sync job failing repeatedly, reports showing incorrect financial figures",high
+"Cannot submit quarterly compliance report, portal returns error on every attempt",high
+"URGENT: Cannot submit quarterly compliance report, portal returns error on every attempt",high
+"User reported: Cannot submit quarterly compliance report, portal returns error on every attempt",high
+"Ticket: cannot submit quarterly compliance report, portal returns error on every attempt",high
+Legal team locked out of document management system before filing deadline,high
+URGENT: Legal team locked out of document management system before filing deadline,high
+User reported: Legal team locked out of document management system before filing deadline,high
+Ticket: legal team locked out of document management system before filing deadline,high
+Single sign-on broken for entire marketing department this morning,high
+URGENT: Single sign-on broken for entire marketing department this morning,high
+User reported: Single sign-on broken for entire marketing department this morning,high
+Ticket: single sign-on broken for entire marketing department this morning,high
+"Support ticketing system itself is down, agents cannot log new tickets",high
+"URGENT: Support ticketing system itself is down, agents cannot log new tickets",high
+"User reported: Support ticketing system itself is down, agents cannot log new tickets",high
+"Ticket: support ticketing system itself is down, agents cannot log new tickets",high
+"Customer data export job failing, blocking a contractual delivery deadline",high
+"URGENT: Customer data export job failing, blocking a contractual delivery deadline",high
+"User reported: Customer data export job failing, blocking a contractual delivery deadline",high
+"Ticket: customer data export job failing, blocking a contractual delivery deadline",high
+"Remote desktop keeps disconnecting every few minutes, cannot get work done",high
+"URGENT: Remote desktop keeps disconnecting every few minutes, cannot get work done",high
+"User reported: Remote desktop keeps disconnecting every few minutes, cannot get work done",high
+"Ticket: remote desktop keeps disconnecting every few minutes, cannot get work done",high
+"One region's API gateway returning errors, affecting a large customer segment",high
+"URGENT: One region's API gateway returning errors, affecting a large customer segment",high
+"User reported: One region's API gateway returning errors, affecting a large customer segment",high
+"Ticket: one region's api gateway returning errors, affecting a large customer segment",high
+"Developer cannot push code, git server rejecting all authentication attempts",high
+"URGENT: Developer cannot push code, git server rejecting all authentication attempts",high
+"User reported: Developer cannot push code, git server rejecting all authentication attempts",high
+"Ticket: developer cannot push code, git server rejecting all authentication attempts",high
+"Warehouse scanning system down, blocking shipment processing for the day",high
+"URGENT: Warehouse scanning system down, blocking shipment processing for the day",high
+"User reported: Warehouse scanning system down, blocking shipment processing for the day",high
+"Ticket: warehouse scanning system down, blocking shipment processing for the day",high
+"Slack workspace inaccessible for the whole company, no internal communication",high
+"URGENT: Slack workspace inaccessible for the whole company, no internal communication",high
+"User reported: Slack workspace inaccessible for the whole company, no internal communication",high
+"Ticket: slack workspace inaccessible for the whole company, no internal communication",high
+Critical report generation job has failed for three days in a row,high
+URGENT: Critical report generation job has failed for three days in a row,high
+User reported: Critical report generation job has failed for three days in a row,high
+Ticket: critical report generation job has failed for three days in a row,high
+"New hire cannot access any systems on their first day, provisioning failed",high
+"URGENT: New hire cannot access any systems on their first day, provisioning failed",high
+"User reported: New hire cannot access any systems on their first day, provisioning failed",high
+"Ticket: new hire cannot access any systems on their first day, provisioning failed",high
+"Entire QA team blocked, staging environment throwing constant errors",high
+"URGENT: Entire QA team blocked, staging environment throwing constant errors",high
+"User reported: Entire QA team blocked, staging environment throwing constant errors",high
+"Ticket: entire qa team blocked, staging environment throwing constant errors",high
+Billing system miscalculating invoices for a large batch of customers,high
+URGENT: Billing system miscalculating invoices for a large batch of customers,high
+User reported: Billing system miscalculating invoices for a large batch of customers,high
+Ticket: billing system miscalculating invoices for a large batch of customers,high
+"Data warehouse ETL job stuck, tomorrow's board report will be incomplete",high
+"URGENT: Data warehouse ETL job stuck, tomorrow's board report will be incomplete",high
+"User reported: Data warehouse ETL job stuck, tomorrow's board report will be incomplete",high
+"Ticket: data warehouse etl job stuck, tomorrow's board report will be incomplete",high
+Multiple users reporting they cannot reset their own passwords,high
+URGENT: Multiple users reporting they cannot reset their own passwords,high
+User reported: Multiple users reporting they cannot reset their own passwords,high
+Ticket: multiple users reporting they cannot reset their own passwords,high
+"Production alerting system itself went down, we're flying blind on monitoring",high
+"URGENT: Production alerting system itself went down, we're flying blind on monitoring",high
+"User reported: Production alerting system itself went down, we're flying blind on monitoring",high
+"Ticket: production alerting system itself went down, we're flying blind on monitoring",high
+"Key API rate limit being hit constantly, causing failed customer requests",high
+"URGENT: Key API rate limit being hit constantly, causing failed customer requests",high
+"User reported: Key API rate limit being hit constantly, causing failed customer requests",high
+"Ticket: key api rate limit being hit constantly, causing failed customer requests",high
+Video conferencing completely broken company-wide during a critical client call,high
+URGENT: Video conferencing completely broken company-wide during a critical client call,high
+User reported: Video conferencing completely broken company-wide during a critical client call,high
+Ticket: video conferencing completely broken company-wide during a critical client call,high
+"Contractor access revoked accidentally mid-project, blocking delivery",high
+"URGENT: Contractor access revoked accidentally mid-project, blocking delivery",high
+"User reported: Contractor access revoked accidentally mid-project, blocking delivery",high
+"Ticket: contractor access revoked accidentally mid-project, blocking delivery",high
+"Automated deployment pipeline broken, hotfixes cannot reach production",high
+"URGENT: Automated deployment pipeline broken, hotfixes cannot reach production",high
+"User reported: Automated deployment pipeline broken, hotfixes cannot reach production",high
+"Ticket: automated deployment pipeline broken, hotfixes cannot reach production",high
+Customer support inbox not receiving any new emails since this morning,high
+URGENT: Customer support inbox not receiving any new emails since this morning,high
+User reported: Customer support inbox not receiving any new emails since this morning,high
+Ticket: customer support inbox not receiving any new emails since this morning,high
+Recruiting team locked out of the applicant tracking system during hiring push,high
+URGENT: Recruiting team locked out of the applicant tracking system during hiring push,high
+User reported: Recruiting team locked out of the applicant tracking system during hiring push,high
+Ticket: recruiting team locked out of the applicant tracking system during hiring push,high
+One entire department's laptops failed to boot after a bad update rollout,high
+URGENT: One entire department's laptops failed to boot after a bad update rollout,high
+User reported: One entire department's laptops failed to boot after a bad update rollout,high
+Ticket: one entire department's laptops failed to boot after a bad update rollout,high
+"Cannot access production logs, actively troubleshooting another incident blind",high
+"URGENT: Cannot access production logs, actively troubleshooting another incident blind",high
+"User reported: Cannot access production logs, actively troubleshooting another incident blind",high
+"Ticket: cannot access production logs, actively troubleshooting another incident blind",high
+"Order fulfillment queue backed up significantly, shipments already delayed",high
+"URGENT: Order fulfillment queue backed up significantly, shipments already delayed",high
+"User reported: Order fulfillment queue backed up significantly, shipments already delayed",high
+"Ticket: order fulfillment queue backed up significantly, shipments already delayed",high
+"Confirmed suspicious access to a single employee's account, containing now",high
+"URGENT: Confirmed suspicious access to a single employee's account, containing now",high
+"User reported: Confirmed suspicious access to a single employee's account, containing now",high
+"Ticket: confirmed suspicious access to a single employee's account, containing now",high
+Customer-reported bug is blocking checkout for a specific payment method,high
+URGENT: Customer-reported bug is blocking checkout for a specific payment method,high
+User reported: Customer-reported bug is blocking checkout for a specific payment method,high
+Ticket: customer-reported bug is blocking checkout for a specific payment method,high
+Reporting dashboard has been broken for the exec team all week,high
+URGENT: Reporting dashboard has been broken for the exec team all week,high
+User reported: Reporting dashboard has been broken for the exec team all week,high
+Ticket: reporting dashboard has been broken for the exec team all week,high
+SFTP server rejecting all vendor file uploads since last night,high
+URGENT: SFTP server rejecting all vendor file uploads since last night,high
+User reported: SFTP server rejecting all vendor file uploads since last night,high
+Ticket: sftp server rejecting all vendor file uploads since last night,high
+"Internal wiki completely inaccessible, teams cannot find critical documentation",high
+"URGENT: Internal wiki completely inaccessible, teams cannot find critical documentation",high
+"User reported: Internal wiki completely inaccessible, teams cannot find critical documentation",high
+"Ticket: internal wiki completely inaccessible, teams cannot find critical documentation",high
+"A regional office's entire network dropped, they're fully offline",high
+"URGENT: A regional office's entire network dropped, they're fully offline",high
+"User reported: A regional office's entire network dropped, they're fully offline",high
+"Ticket: a regional office's entire network dropped, they're fully offline",high
+"License server down, blocking the whole design team from their software",high
+"URGENT: License server down, blocking the whole design team from their software",high
+"User reported: License server down, blocking the whole design team from their software",high
+"Ticket: license server down, blocking the whole design team from their software",high
+"Automated invoice generation broken, delaying customer billing cycle",high
+"URGENT: Automated invoice generation broken, delaying customer billing cycle",high
+"User reported: Automated invoice generation broken, delaying customer billing cycle",high
+"Ticket: automated invoice generation broken, delaying customer billing cycle",high
+On-call engineer paged repeatedly by a flapping but non-fatal alert,high
+URGENT: On-call engineer paged repeatedly by a flapping but non-fatal alert,high
+User reported: On-call engineer paged repeatedly by a flapping but non-fatal alert,high
+Ticket: on-call engineer paged repeatedly by a flapping but non-fatal alert,high
+"Cannot generate any PDF exports, blocking a client-facing deliverable",high
+"URGENT: Cannot generate any PDF exports, blocking a client-facing deliverable",high
+"User reported: Cannot generate any PDF exports, blocking a client-facing deliverable",high
+"Ticket: cannot generate any pdf exports, blocking a client-facing deliverable",high
+Entire support team's headsets stopped working after a system update,high
+URGENT: Entire support team's headsets stopped working after a system update,high
+User reported: Entire support team's headsets stopped working after a system update,high
+Ticket: entire support team's headsets stopped working after a system update,high
+Data pipeline feeding the ML model has been broken for two days,high
+URGENT: Data pipeline feeding the ML model has been broken for two days,high
+User reported: Data pipeline feeding the ML model has been broken for two days,high
+Ticket: data pipeline feeding the ml model has been broken for two days,high
+vpn disconnected,high
+URGENT: vpn disconnected,high
+User reported: vpn disconnected,high
+Ticket: vpn disconnected,high
+sap user locked,high
+URGENT: sap user locked,high
+User reported: sap user locked,high
+Ticket: sap user locked,high
+blue screen crashing,high
+URGENT: blue screen crashing,high
+User reported: blue screen crashing,high
+Ticket: blue screen crashing,high
+cannot work at all,high
+URGENT: cannot work at all,high
+User reported: cannot work at all,high
+Ticket: cannot work at all,high
+access denied error,high
+URGENT: access denied error,high
+User reported: access denied error,high
+Ticket: access denied error,high
+account locked,high
+URGENT: account locked,high
+User reported: account locked,high
+Ticket: account locked,high
+"Respected sir, my laptop getting blue screen every one hour when doing work kindly resolve",high
+"URGENT: Respected sir, my laptop getting blue screen every one hour when doing work kindly resolve",high
+"User reported: Respected sir, my laptop getting blue screen every one hour when doing work kindly resolve",high
+"Ticket: respected sir, my laptop getting blue screen every one hour when doing work kindly resolve",high
+"Greetings team, kindly do the needful as my SAP login is showing user locked error for my id",high
+"URGENT: Greetings team, kindly do the needful as my SAP login is showing user locked error for my id",high
+"User reported: Greetings team, kindly do the needful as my SAP login is showing user locked error for my id",high
+"Ticket: greetings team, kindly do the needful as my sap login is showing user locked error for my id",high
+"Dear support, please assist as my VPN connection fails repeatedly with certificate error preventing remote work",high
+"URGENT: Dear support, please assist as my VPN connection fails repeatedly with certificate error preventing remote work",high
+"User reported: Dear support, please assist as my VPN connection fails repeatedly with certificate error preventing remote work",high
+"Ticket: dear support, please assist as my vpn connection fails repeatedly with certificate error preventing remote work",high
+"Respected team, kindly grant access as I am completely blocked from accessing CRM before my client demo",high
+"URGENT: Respected team, kindly grant access as I am completely blocked from accessing CRM before my client demo",high
+"User reported: Respected team, kindly grant access as I am completely blocked from accessing CRM before my client demo",high
+"Ticket: respected team, kindly grant access as i am completely blocked from accessing crm before my client demo",high
+"Good day, I am respectfully requesting urgent resolution as Okta MFA is not arriving on my mobile device",high
+"URGENT: Good day, I am respectfully requesting urgent resolution as Okta MFA is not arriving on my mobile device",high
+"User reported: Good day, I am respectfully requesting urgent resolution as Okta MFA is not arriving on my mobile device",high
+"Ticket: good day, i am respectfully requesting urgent resolution as okta mfa is not arriving on my mobile device",high
+"Dear IT team, kindly fix my account as I am getting access denied error on finance portal before payroll deadline",high
+"URGENT: Dear IT team, kindly fix my account as I am getting access denied error on finance portal before payroll deadline",high
+"User reported: Dear IT team, kindly fix my account as I am getting access denied error on finance portal before payroll deadline",high
+"Ticket: dear it team, kindly fix my account as i am getting access denied error on finance portal before payroll deadline",high
+"Respected team, kindly assist as single sign-on is broken for our entire department this morning",high
+"URGENT: Respected team, kindly assist as single sign-on is broken for our entire department this morning",high
+"User reported: Respected team, kindly assist as single sign-on is broken for our entire department this morning",high
+"Ticket: respected team, kindly assist as single sign-on is broken for our entire department this morning",high
+"Printer in accounting department jammed, workaround printer available nearby",medium
+"User reported: Printer in accounting department jammed, workaround printer available nearby",medium
+"Ticket: printer in accounting department jammed, workaround printer available nearby",medium
+Outlook occasionally freezes when opening large attachments,medium
+User reported: Outlook occasionally freezes when opening large attachments,medium
+Ticket: outlook occasionally freezes when opening large attachments,medium
+"Wi-Fi signal weak in one corner of the office, wired connection available",medium
+"User reported: Wi-Fi signal weak in one corner of the office, wired connection available",medium
+"Ticket: wi-fi signal weak in one corner of the office, wired connection available",medium
+Need software license reassigned from departed employee to new hire,medium
+User reported: Need software license reassigned from departed employee to new hire,medium
+Ticket: need software license reassigned from departed employee to new hire,medium
+Dashboard reporting shows minor data lag of a few hours,medium
+User reported: Dashboard reporting shows minor data lag of a few hours,medium
+Ticket: dashboard reporting shows minor data lag of a few hours,medium
+Request for additional storage quota on shared drive,medium
+User reported: Request for additional storage quota on shared drive,medium
+Ticket: request for additional storage quota on shared drive,medium
+New employee needs standard software installed before start date next week,medium
+User reported: New employee needs standard software installed before start date next week,medium
+Ticket: new employee needs standard software installed before start date next week,medium
+Second monitor not detected after docking station firmware update,medium
+User reported: Second monitor not detected after docking station firmware update,medium
+Ticket: second monitor not detected after docking station firmware update,medium
+Meeting room video conferencing camera has poor image quality,medium
+User reported: Meeting room video conferencing camera has poor image quality,medium
+Ticket: meeting room video conferencing camera has poor image quality,medium
+Need access granted to internal wiki space for new team member,medium
+User reported: Need access granted to internal wiki space for new team member,medium
+Ticket: need access granted to internal wiki space for new team member,medium
+Non-critical background job occasionally fails and needs manual restart,medium
+User reported: Non-critical background job occasionally fails and needs manual restart,medium
+Ticket: non-critical background job occasionally fails and needs manual restart,medium
+Request to update distribution list membership for department,medium
+User reported: Request to update distribution list membership for department,medium
+Ticket: request to update distribution list membership for department,medium
+Slow loading times on internal reporting tool during peak hours,medium
+User reported: Slow loading times on internal reporting tool during peak hours,medium
+Ticket: slow loading times on internal reporting tool during peak hours,medium
+Need firewall rule opened for new vendor SaaS integration,medium
+User reported: Need firewall rule opened for new vendor SaaS integration,medium
+Ticket: need firewall rule opened for new vendor saas integration,medium
+"Laptop battery health degraded, still usable but needs eventual replacement",medium
+"User reported: Laptop battery health degraded, still usable but needs eventual replacement",medium
+"Ticket: laptop battery health degraded, still usable but needs eventual replacement",medium
+Request for read-only access to project tracking board,medium
+User reported: Request for read-only access to project tracking board,medium
+Ticket: request for read-only access to project tracking board,medium
+"Minor UI bug in internal tool, workaround exists using alternate menu",medium
+"User reported: Minor UI bug in internal tool, workaround exists using alternate menu",medium
+"Ticket: minor ui bug in internal tool, workaround exists using alternate menu",medium
+Need VPN profile updated to include new internal subnet,medium
+User reported: Need VPN profile updated to include new internal subnet,medium
+Ticket: need vpn profile updated to include new internal subnet,medium
+Occasional Bluetooth disconnect issue with wireless headset,medium
+User reported: Occasional Bluetooth disconnect issue with wireless headset,medium
+Ticket: occasional bluetooth disconnect issue with wireless headset,medium
+Request to increase mailbox storage quota approaching limit,medium
+User reported: Request to increase mailbox storage quota approaching limit,medium
+Ticket: request to increase mailbox storage quota approaching limit,medium
+"Internal application showing outdated data, refresh resolves temporarily",medium
+"User reported: Internal application showing outdated data, refresh resolves temporarily",medium
+"Ticket: internal application showing outdated data, refresh resolves temporarily",medium
+Need test environment database refreshed with latest production schema,medium
+User reported: Need test environment database refreshed with latest production schema,medium
+Ticket: need test environment database refreshed with latest production schema,medium
+Software update available but not yet installed on department laptops,medium
+User reported: Software update available but not yet installed on department laptops,medium
+Ticket: software update available but not yet installed on department laptops,medium
+Request for calendar sharing permissions between two departments,medium
+User reported: Request for calendar sharing permissions between two departments,medium
+Ticket: request for calendar sharing permissions between two departments,medium
+Occasional lag when switching between multiple monitors on docking station,medium
+User reported: Occasional lag when switching between multiple monitors on docking station,medium
+Ticket: occasional lag when switching between multiple monitors on docking station,medium
+Need to update team's shared calendar with new meeting room,medium
+User reported: Need to update team's shared calendar with new meeting room,medium
+Ticket: need to update team's shared calendar with new meeting room,medium
+"Spreadsheet macro throwing an error, manual workaround currently in use",medium
+"User reported: Spreadsheet macro throwing an error, manual workaround currently in use",medium
+"Ticket: spreadsheet macro throwing an error, manual workaround currently in use",medium
+Request for guest Wi-Fi credentials for upcoming vendor visit,medium
+User reported: Request for guest Wi-Fi credentials for upcoming vendor visit,medium
+Ticket: request for guest wi-fi credentials for upcoming vendor visit,medium
+Need to archive old project files to free up shared drive space,medium
+User reported: Need to archive old project files to free up shared drive space,medium
+Ticket: need to archive old project files to free up shared drive space,medium
+Minor formatting issue in automated weekly report email,medium
+User reported: Minor formatting issue in automated weekly report email,medium
+Ticket: minor formatting issue in automated weekly report email,medium
+Request for additional seats on team collaboration software license,medium
+User reported: Request for additional seats on team collaboration software license,medium
+Ticket: request for additional seats on team collaboration software license,medium
+"Occasional dropped call quality on desk phone, mobile works fine",medium
+"User reported: Occasional dropped call quality on desk phone, mobile works fine",medium
+"Ticket: occasional dropped call quality on desk phone, mobile works fine",medium
+Need read access to another team's shared folder for a joint project,medium
+User reported: Need read access to another team's shared folder for a joint project,medium
+Ticket: need read access to another team's shared folder for a joint project,medium
+Company intranet search returning some outdated results,medium
+User reported: Company intranet search returning some outdated results,medium
+Ticket: company intranet search returning some outdated results,medium
+Request to onboard a new contractor with standard system access,medium
+User reported: Request to onboard a new contractor with standard system access,medium
+Ticket: request to onboard a new contractor with standard system access,medium
+Laptop occasionally needs a restart after waking from sleep,medium
+User reported: Laptop occasionally needs a restart after waking from sleep,medium
+Ticket: laptop occasionally needs a restart after waking from sleep,medium
+Need help configuring email signature template for new branding,medium
+User reported: Need help configuring email signature template for new branding,medium
+Ticket: need help configuring email signature template for new branding,medium
+Request for a loaner laptop while primary device is being repaired,medium
+User reported: Request for a loaner laptop while primary device is being repaired,medium
+Ticket: request for a loaner laptop while primary device is being repaired,medium
+"Minor delay in nightly report generation, report still arrives by morning",medium
+"User reported: Minor delay in nightly report generation, report still arrives by morning",medium
+"Ticket: minor delay in nightly report generation, report still arrives by morning",medium
+Need permissions updated after internal team reorganization,medium
+User reported: Need permissions updated after internal team reorganization,medium
+Ticket: need permissions updated after internal team reorganization,medium
+Chat notifications occasionally delayed by a few minutes,medium
+User reported: Chat notifications occasionally delayed by a few minutes,medium
+Ticket: chat notifications occasionally delayed by a few minutes,medium
+Request to add a new field to the internal ticket intake form,medium
+User reported: Request to add a new field to the internal ticket intake form,medium
+Ticket: request to add a new field to the internal ticket intake form,medium
+"Shared printer toner running low, replacement already on order",medium
+"User reported: Shared printer toner running low, replacement already on order",medium
+"Ticket: shared printer toner running low, replacement already on order",medium
+"Need to update firmware on conference room display, no urgency",medium
+"User reported: Need to update firmware on conference room display, no urgency",medium
+"Ticket: need to update firmware on conference room display, no urgency",medium
+Occasional autocomplete glitch in the internal CRM search bar,medium
+User reported: Occasional autocomplete glitch in the internal CRM search bar,medium
+Ticket: occasional autocomplete glitch in the internal crm search bar,medium
+"Request for a second display cable, current one has minor connector wear",medium
+"User reported: Request for a second display cable, current one has minor connector wear",medium
+"Ticket: request for a second display cable, current one has minor connector wear",medium
+Internal training video buffering occasionally on slower connections,medium
+User reported: Internal training video buffering occasionally on slower connections,medium
+Ticket: internal training video buffering occasionally on slower connections,medium
+Need standard onboarding checklist re-sent for a rescheduled new hire,medium
+User reported: Need standard onboarding checklist re-sent for a rescheduled new hire,medium
+Ticket: need standard onboarding checklist re-sent for a rescheduled new hire,medium
+Request to test a new integration in the staging environment first,medium
+User reported: Request to test a new integration in the staging environment first,medium
+Ticket: request to test a new integration in the staging environment first,medium
+Minor spacing issue on the internal employee directory page,medium
+User reported: Minor spacing issue on the internal employee directory page,medium
+Ticket: minor spacing issue on the internal employee directory page,medium
+Need to update the on-call rotation schedule for next month,medium
+User reported: Need to update the on-call rotation schedule for next month,medium
+Ticket: need to update the on-call rotation schedule for next month,medium
+Occasional slow response time on the internal helpdesk chatbot,medium
+User reported: Occasional slow response time on the internal helpdesk chatbot,medium
+Ticket: occasional slow response time on the internal helpdesk chatbot,medium
+Request for a spare HDMI adapter for the shared meeting room cart,medium
+User reported: Request for a spare HDMI adapter for the shared meeting room cart,medium
+Ticket: request for a spare hdmi adapter for the shared meeting room cart,medium
+Need to adjust automatic email forwarding rule for a team alias,medium
+User reported: Need to adjust automatic email forwarding rule for a team alias,medium
+Ticket: need to adjust automatic email forwarding rule for a team alias,medium
+Internal dashboard chart occasionally mislabels a data series,medium
+User reported: Internal dashboard chart occasionally mislabels a data series,medium
+Ticket: internal dashboard chart occasionally mislabels a data series,medium
+Request to extend trial access to a new productivity tool for evaluation,medium
+User reported: Request to extend trial access to a new productivity tool for evaluation,medium
+Ticket: request to extend trial access to a new productivity tool for evaluation,medium
+"Laptop fan runs a bit louder than usual under heavy load, still functional",medium
+"User reported: Laptop fan runs a bit louder than usual under heavy load, still functional",medium
+"Ticket: laptop fan runs a bit louder than usual under heavy load, still functional",medium
+Need someone to review and approve a routine access request,medium
+User reported: Need someone to review and approve a routine access request,medium
+Ticket: need someone to review and approve a routine access request,medium
+Request for updated documentation on the expense submission process,medium
+User reported: Request for updated documentation on the expense submission process,medium
+Ticket: request for updated documentation on the expense submission process,medium
+Occasional typo found in an automated system-generated email template,medium
+User reported: Occasional typo found in an automated system-generated email template,medium
+Ticket: occasional typo found in an automated system-generated email template,medium
+Need help setting up a recurring meeting series in the shared calendar,medium
+User reported: Need help setting up a recurring meeting series in the shared calendar,medium
+Ticket: need help setting up a recurring meeting series in the shared calendar,medium
+Request to test whether a new browser extension is compatible with our SSO,medium
+User reported: Request to test whether a new browser extension is compatible with our SSO,medium
+Ticket: request to test whether a new browser extension is compatible with our sso,medium
+network problem,medium
+User reported: network problem,medium
+Ticket: network problem,medium
+system error popped up,medium
+User reported: system error popped up,medium
+Ticket: system error popped up,medium
+system error popped up on my screen,medium
+User reported: system error popped up on my screen,medium
+Ticket: system error popped up on my screen,medium
+it is not working,medium
+User reported: it is not working,medium
+Ticket: it is not working,medium
+something is wrong with my laptop,medium
+User reported: something is wrong with my laptop,medium
+Ticket: something is wrong with my laptop,medium
+something's wrong,medium
+User reported: something's wrong,medium
+Ticket: something's wrong,medium
+help with this,medium
+User reported: help with this,medium
+Ticket: help with this,medium
+issue with computer,medium
+User reported: issue with computer,medium
+Ticket: issue with computer,medium
+laptop problem,medium
+User reported: laptop problem,medium
+Ticket: laptop problem,medium
+app not loading,medium
+User reported: app not loading,medium
+Ticket: app not loading,medium
+getting an error,medium
+User reported: getting an error,medium
+Ticket: getting an error,medium
+having trouble,medium
+User reported: having trouble,medium
+Ticket: having trouble,medium
+computer issue,medium
+User reported: computer issue,medium
+Ticket: computer issue,medium
+software broken,medium
+User reported: software broken,medium
+Ticket: software broken,medium
+please help,medium
+User reported: please help,medium
+Ticket: please help,medium
+need assistance with system,medium
+User reported: need assistance with system,medium
+Ticket: need assistance with system,medium
+facing error,medium
+User reported: facing error,medium
+Ticket: facing error,medium
+connection issue,medium
+User reported: connection issue,medium
+Ticket: connection issue,medium
+"Greetings team, I am not getting email notifications in my mobile phone application since yesterday evening",medium
+"User reported: Greetings team, I am not getting email notifications in my mobile phone application since yesterday evening",medium
+"Ticket: greetings team, i am not getting email notifications in my mobile phone application since yesterday evening",medium
+"Please to assist, password reset link expired for internal portal",medium
+"User reported: Please to assist, password reset link expired for internal portal",medium
+"Ticket: please to assist, password reset link expired for internal portal",medium
+"Respected team, kindly assist in requesting standard software installation for new department member",medium
+"User reported: Respected team, kindly assist in requesting standard software installation for new department member",medium
+"Ticket: respected team, kindly assist in requesting standard software installation for new department member",medium
+"Dear support, kindly note that my second monitor screen is flickering occasionally when docked",medium
+"User reported: Dear support, kindly note that my second monitor screen is flickering occasionally when docked",medium
+"Ticket: dear support, kindly note that my second monitor screen is flickering occasionally when docked",medium
+"Good day, please be informed that printer in accounting has minor paper jam",medium
+"User reported: Good day, please be informed that printer in accounting has minor paper jam",medium
+"Ticket: good day, please be informed that printer in accounting has minor paper jam",medium
+"Respected team, kindly help configure email signature template for new company branding",medium
+"User reported: Respected team, kindly help configure email signature template for new company branding",medium
+"Ticket: respected team, kindly help configure email signature template for new company branding",medium
+Requesting information about available software training courses,low
+User reported: Requesting information about available software training courses,low
+Ticket: requesting information about available software training courses,low
+Question about company policy on personal device usage,low
+User reported: Question about company policy on personal device usage,low
+Ticket: question about company policy on personal device usage,low
+Would like to request an additional monitor for ergonomic setup,low
+User reported: Would like to request an additional monitor for ergonomic setup,low
+Ticket: would like to request an additional monitor for ergonomic setup,low
+General inquiry about upcoming IT system maintenance windows,low
+User reported: General inquiry about upcoming IT system maintenance windows,low
+Ticket: general inquiry about upcoming it system maintenance windows,low
+Requesting a new mouse pad and desk organizer for workstation,low
+User reported: Requesting a new mouse pad and desk organizer for workstation,low
+Ticket: requesting a new mouse pad and desk organizer for workstation,low
+Curious about what video conferencing tools are officially supported,low
+User reported: Curious about what video conferencing tools are officially supported,low
+Ticket: curious about what video conferencing tools are officially supported,low
+Asking for a walkthrough of the new expense reporting tool,low
+User reported: Asking for a walkthrough of the new expense reporting tool,low
+Ticket: asking for a walkthrough of the new expense reporting tool,low
+Requesting information on how to set up email signature template,low
+User reported: Requesting information on how to set up email signature template,low
+Ticket: requesting information on how to set up email signature template,low
+Question about how to request annual software license renewal,low
+User reported: Question about how to request annual software license renewal,low
+Ticket: question about how to request annual software license renewal,low
+General question about company Wi-Fi guest access policy,low
+User reported: General question about company Wi-Fi guest access policy,low
+Ticket: general question about company wi-fi guest access policy,low
+Would like documentation on how to use the internal knowledge base,low
+User reported: Would like documentation on how to use the internal knowledge base,low
+Ticket: would like documentation on how to use the internal knowledge base,low
+Requesting a demo of new project management tool for the team,low
+User reported: Requesting a demo of new project management tool for the team,low
+Ticket: requesting a demo of new project management tool for the team,low
+Asking about best practices for organizing shared drive folders,low
+User reported: Asking about best practices for organizing shared drive folders,low
+Ticket: asking about best practices for organizing shared drive folders,low
+Inquiry about upgrading to a larger external monitor,low
+User reported: Inquiry about upgrading to a larger external monitor,low
+Ticket: inquiry about upgrading to a larger external monitor,low
+Requesting information about company laptop refresh cycle,low
+User reported: Requesting information about company laptop refresh cycle,low
+Ticket: requesting information about company laptop refresh cycle,low
+Question about how to add a delegate to shared calendar,low
+User reported: Question about how to add a delegate to shared calendar,low
+Ticket: question about how to add a delegate to shared calendar,low
+Would like an optional desk plant approved for personal workspace,low
+User reported: Would like an optional desk plant approved for personal workspace,low
+Ticket: would like an optional desk plant approved for personal workspace,low
+Asking whether standing desks are available for new hires,low
+User reported: Asking whether standing desks are available for new hires,low
+Ticket: asking whether standing desks are available for new hires,low
+General question about how to submit an IT feature request,low
+User reported: General question about how to submit an IT feature request,low
+Ticket: general question about how to submit an it feature request,low
+Requesting information about noise-cancelling headset options,low
+User reported: Requesting information about noise-cancelling headset options,low
+Ticket: requesting information about noise-cancelling headset options,low
+Asking about company style guide for internal presentation templates,low
+User reported: Asking about company style guide for internal presentation templates,low
+Ticket: asking about company style guide for internal presentation templates,low
+Question about how long IT support tickets typically take to resolve,low
+User reported: Question about how long IT support tickets typically take to resolve,low
+Ticket: question about how long it support tickets typically take to resolve,low
+Requesting an optional training session on new collaboration tool,low
+User reported: Requesting an optional training session on new collaboration tool,low
+Ticket: requesting an optional training session on new collaboration tool,low
+Asking for recommendation on ergonomic keyboard options,low
+User reported: Asking for recommendation on ergonomic keyboard options,low
+Ticket: asking for recommendation on ergonomic keyboard options,low
+Curious if there's a dark mode option for the internal portal,low
+User reported: Curious if there's a dark mode option for the internal portal,low
+Ticket: curious if there's a dark mode option for the internal portal,low
+Requesting a tour of the new office IT setup for orientation,low
+User reported: Requesting a tour of the new office IT setup for orientation,low
+Ticket: requesting a tour of the new office it setup for orientation,low
+Question about whether personal headphones can be used with the desk phone,low
+User reported: Question about whether personal headphones can be used with the desk phone,low
+Ticket: question about whether personal headphones can be used with the desk phone,low
+Asking if there's a recommended backpack for carrying a work laptop,low
+User reported: Asking if there's a recommended backpack for carrying a work laptop,low
+Ticket: asking if there's a recommended backpack for carrying a work laptop,low
+Would like to suggest a new feature for the internal ticketing tool,low
+User reported: Would like to suggest a new feature for the internal ticketing tool,low
+Ticket: would like to suggest a new feature for the internal ticketing tool,low
+General curiosity about what browser is officially recommended,low
+User reported: General curiosity about what browser is officially recommended,low
+Ticket: general curiosity about what browser is officially recommended,low
+Requesting an optional lunch-and-learn session on cybersecurity basics,low
+User reported: Requesting an optional lunch-and-learn session on cybersecurity basics,low
+Ticket: requesting an optional lunch-and-learn session on cybersecurity basics,low
+Asking how to change the display language on the internal portal,low
+User reported: Asking how to change the display language on the internal portal,low
+Ticket: asking how to change the display language on the internal portal,low
+Question about whether a webcam cover is provided with new laptops,low
+User reported: Question about whether a webcam cover is provided with new laptops,low
+Ticket: question about whether a webcam cover is provided with new laptops,low
+Requesting a copy of the IT onboarding slide deck for reference,low
+User reported: Requesting a copy of the IT onboarding slide deck for reference,low
+Ticket: requesting a copy of the it onboarding slide deck for reference,low
+Asking if there's a preferred note-taking app for meetings,low
+User reported: Asking if there's a preferred note-taking app for meetings,low
+Ticket: asking if there's a preferred note-taking app for meetings,low
+Curious about the process for suggesting a new company holiday,low
+User reported: Curious about the process for suggesting a new company holiday,low
+Ticket: curious about the process for suggesting a new company holiday,low
+Requesting feedback form link for a recent IT support interaction,low
+User reported: Requesting feedback form link for a recent IT support interaction,low
+Ticket: requesting feedback form link for a recent it support interaction,low
+Asking about optional add-ons available for the standard laptop bundle,low
+User reported: Asking about optional add-ons available for the standard laptop bundle,low
+Ticket: asking about optional add-ons available for the standard laptop bundle,low
+Question about whether we support Linux as a personal dev environment,low
+User reported: Question about whether we support Linux as a personal dev environment,low
+Ticket: question about whether we support linux as a personal dev environment,low
+"Requesting an extra desk mat, current one is slightly worn but functional",low
+"User reported: Requesting an extra desk mat, current one is slightly worn but functional",low
+"Ticket: requesting an extra desk mat, current one is slightly worn but functional",low
+Asking for a list of keyboard shortcuts for the internal tool,low
+User reported: Asking for a list of keyboard shortcuts for the internal tool,low
+Ticket: asking for a list of keyboard shortcuts for the internal tool,low
+General inquiry about upcoming company tech talk schedule,low
+User reported: General inquiry about upcoming company tech talk schedule,low
+Ticket: general inquiry about upcoming company tech talk schedule,low
+Requesting clarification on optional two-monitor setup guidelines,low
+User reported: Requesting clarification on optional two-monitor setup guidelines,low
+Ticket: requesting clarification on optional two-monitor setup guidelines,low
+Asking if there's a preferred password manager recommended by IT,low
+User reported: Asking if there's a preferred password manager recommended by IT,low
+Ticket: asking if there's a preferred password manager recommended by it,low
+Curious about the roadmap for future internal tool improvements,low
+User reported: Curious about the roadmap for future internal tool improvements,low
+Ticket: curious about the roadmap for future internal tool improvements,low
+Requesting an optional accessibility review of a personal workstation setup,low
+User reported: Requesting an optional accessibility review of a personal workstation setup,low
+Ticket: requesting an optional accessibility review of a personal workstation setup,low
+Asking whether a wireless charging pad can be added to the desk,low
+User reported: Asking whether a wireless charging pad can be added to the desk,low
+Ticket: asking whether a wireless charging pad can be added to the desk,low
+Question about the typical response time for non-urgent IT requests,low
+User reported: Question about the typical response time for non-urgent IT requests,low
+Ticket: question about the typical response time for non-urgent it requests,low
+Requesting a printed copy of the company IT usage policy,low
+User reported: Requesting a printed copy of the company IT usage policy,low
+Ticket: requesting a printed copy of the company it usage policy,low
+Asking if there's a suggested reading list for new engineers,low
+User reported: Asking if there's a suggested reading list for new engineers,low
+Ticket: asking if there's a suggested reading list for new engineers,low
+Curious about whether team can get branded laptop stickers,low
+User reported: Curious about whether team can get branded laptop stickers,low
+Ticket: curious about whether team can get branded laptop stickers,low
+Requesting an optional calendar block for quiet focus time setup help,low
+User reported: Requesting an optional calendar block for quiet focus time setup help,low
+Ticket: requesting an optional calendar block for quiet focus time setup help,low
+Asking about the process to nominate a tool for company-wide adoption,low
+User reported: Asking about the process to nominate a tool for company-wide adoption,low
+Ticket: asking about the process to nominate a tool for company-wide adoption,low
+Question about whether external monitors are eligible for reimbursement,low
+User reported: Question about whether external monitors are eligible for reimbursement,low
+Ticket: question about whether external monitors are eligible for reimbursement,low
+Requesting general feedback on the new self-service IT portal design,low
+User reported: Requesting general feedback on the new self-service IT portal design,low
+Ticket: requesting general feedback on the new self-service it portal design,low
+Asking if there's a way to preview upcoming system maintenance notices,low
+User reported: Asking if there's a way to preview upcoming system maintenance notices,low
+Ticket: asking if there's a way to preview upcoming system maintenance notices,low
+Curious what the typical laptop specs are for a new starter kit,low
+User reported: Curious what the typical laptop specs are for a new starter kit,low
+Ticket: curious what the typical laptop specs are for a new starter kit,low
+Requesting an optional walkthrough of keyboard accessibility settings,low
+User reported: Requesting an optional walkthrough of keyboard accessibility settings,low
+Ticket: requesting an optional walkthrough of keyboard accessibility settings,low
+Asking whether desk risers are available to borrow from IT,low
+User reported: Asking whether desk risers are available to borrow from IT,low
+Ticket: asking whether desk risers are available to borrow from it,low
+Question about how to update preferred name in the company directory,low
+User reported: Question about how to update preferred name in the company directory,low
+Ticket: question about how to update preferred name in the company directory,low
+Requesting a sample email template for common IT request types,low
+User reported: Requesting a sample email template for common IT request types,low
+Ticket: requesting a sample email template for common it request types,low
+Asking if there's a suggested onboarding buddy program contact,low
+User reported: Asking if there's a suggested onboarding buddy program contact,low
+Ticket: asking if there's a suggested onboarding buddy program contact,low
+help me with computer,low
+User reported: help me with computer,low
+Ticket: help me with computer,low
+question about laptop,low
+User reported: question about laptop,low
+Ticket: question about laptop,low
+how to use this,low
+User reported: how to use this,low
+Ticket: how to use this,low
+quick question,low
+User reported: quick question,low
+Ticket: quick question,low
+general query,low
+User reported: general query,low
+Ticket: general query,low
+policy question,low
+User reported: policy question,low
+Ticket: policy question,low
+info request,low
+User reported: info request,low
+Ticket: info request,low
+need guidance,low
+User reported: need guidance,low
+Ticket: need guidance,low
+"Good day, wanting to inquire regarding process for requesting secondary screen monitor",low
+"User reported: Good day, wanting to inquire regarding process for requesting secondary screen monitor",low
+"Ticket: good day, wanting to inquire regarding process for requesting secondary screen monitor",low
+"Respected team, kindly share documentation on how to use internal knowledge base",low
+"User reported: Respected team, kindly share documentation on how to use internal knowledge base",low
+"Ticket: respected team, kindly share documentation on how to use internal knowledge base",low
+"Greetings support, I am requesting information about available software training courses",low
+"User reported: Greetings support, I am requesting information about available software training courses",low
+"Ticket: greetings support, i am requesting information about available software training courses",low
+"Dear team, kindly clarify company policy regarding personal headphone usage with desk phone",low
+"User reported: Dear team, kindly clarify company policy regarding personal headphone usage with desk phone",low
+"Ticket: dear team, kindly clarify company policy regarding personal headphone usage with desk phone",low
+"Respected team, kindly provide list of recommended keyboard shortcuts for internal tool",low
+"User reported: Respected team, kindly provide list of recommended keyboard shortcuts for internal tool",low
+"Ticket: respected team, kindly provide list of recommended keyboard shortcuts for internal tool",low

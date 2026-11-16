@@ -166,13 +166,23 @@ def classify_and_route_ticket(title: str, description: str) -> dict:
     Dynamically predicts Category, Assigned Team, Priority, and SLA Target using semantic reasoning.
     Falls back safely on error.
     """
-    fallback_res = {
-        "category": "Internal Project",
-        "assigned_team": "Application Support",
-        "priority": "Medium",
-        "sla_target": "48 hours",
-        "category_confidence": 0.95
-    }
+    t_lower = f"{title} {description}".lower()
+    if any(k in t_lower for k in ["network", "vpn", "wifi", "router", "switch", "firewall", "dns", "subnet", "lan", "wan", "internet"]):
+        fallback_res = {
+            "category": "Access",
+            "assigned_team": "Network Team",
+            "priority": "Medium",
+            "sla_target": "48 hours",
+            "category_confidence": 0.95
+        }
+    else:
+        fallback_res = {
+            "category": "Internal Project",
+            "assigned_team": "Application Support",
+            "priority": "Medium",
+            "sla_target": "48 hours",
+            "category_confidence": 0.95
+        }
 
     try:
         from ai.rag.groq_client import get_groq_api_keys, Groq

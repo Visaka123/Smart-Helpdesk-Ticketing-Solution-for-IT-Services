@@ -620,11 +620,12 @@ Please provide your response following the persona and rules:"""
                 else:
                     groq_messages.append({"role": "user", "content": user_prompt})
 
+                from ai.rag.groq_client import is_rate_limit_or_quota_error, is_model_not_found_error, is_invalid_api_key_error
                 for key in api_keys:
                     try:
                         client = Groq(api_key=key)
                         res = client.chat.completions.create(
-                            model="llama-3.1-8b-instant",
+                            model="openai/gpt-oss-20b",
                             messages=groq_messages,
                             temperature=0.2,
                         )
@@ -633,8 +634,18 @@ Please provide your response following the persona and rules:"""
                             if llm_response and llm_response.strip():
                                 break
                     except Exception as k_err:
-                        logger.warning(f"[RAG GROQ KEY ERROR] {k_err}")
-                        continue
+                        if is_model_not_found_error(k_err):
+                            logger.error(f"[RAG GROQ 404] Model not found: {k_err}")
+                            break
+                        elif is_invalid_api_key_error(k_err):
+                            logger.warning(f"[RAG GROQ 401] Invalid API key, rotating: {k_err}")
+                            continue
+                        elif is_rate_limit_or_quota_error(k_err):
+                            logger.warning(f"[RAG GROQ 429] Rate limit hit, rotating: {k_err}")
+                            continue
+                        else:
+                            logger.warning(f"[RAG GROQ KEY ERROR] {k_err}")
+                            continue
         except Exception as groq_err:
             logger.warning(f"[RAG] Groq LLM call failed: {groq_err}. Using fallback.")
 

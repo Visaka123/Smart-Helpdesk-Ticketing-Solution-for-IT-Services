@@ -17,6 +17,8 @@ import {
   Divider,
   useTheme,
   Stack,
+  Checkbox,
+  FormControlLabel,
 } from '@mui/material'
 import SendIcon from '@mui/icons-material/Send'
 import CancelIcon from '@mui/icons-material/Cancel'
@@ -27,7 +29,7 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 
-const API_BASE = 'http://localhost:8000'
+const API_BASE = import.meta.env.VITE_API_BASE ?? ''
 
 export default function CreateTicketPage() {
   const navigate = useNavigate()
@@ -226,7 +228,7 @@ export default function CreateTicketPage() {
 
             <Divider sx={{ my: 1 }} />
 
-            <Box display="flex" justifyContent="flex-end" gap={2}>
+            <Box display="flex" justifyContent="flex-end" alignItems="center" gap={2}>
               <Button
                 variant="outlined"
                 color="inherit"
@@ -237,21 +239,21 @@ export default function CreateTicketPage() {
               >
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                variant="contained"
-                disabled={submitting}
-                startIcon={<SendIcon />}
-                sx={{
-                  px: 4,
-                  py: 1,
-                  fontWeight: 700,
-                  bgcolor: '#2563EB',
-                  '&:hover': { bgcolor: '#1D4ED8' },
-                }}
-              >
-                {submitting ? 'Submitting...' : 'Submit Ticket'}
-              </Button>
+                <Button
+                  type="submit"
+                  variant="contained"
+                  disabled={submitting}
+                  startIcon={<SendIcon />}
+                  sx={{
+                    px: 4,
+                    py: 1,
+                    fontWeight: 700,
+                    bgcolor: '#2563EB',
+                    '&:hover': { bgcolor: '#1D4ED8' },
+                  }}
+                >
+                  {submitting ? 'Submitting...' : 'Submit Ticket'}
+                </Button>
             </Box>
           </Stack>
         </form>

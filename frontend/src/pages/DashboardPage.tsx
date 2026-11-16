@@ -16,18 +16,25 @@ import {
   TableRow,
   Paper,
   Tooltip,
+  Alert,
+  CircularProgress,
   useTheme,
 } from '@mui/material'
 import ViewCarouselIcon from '@mui/icons-material/ViewCarousel'
 import TableChartIcon from '@mui/icons-material/TableChart'
 import AddIcon from '@mui/icons-material/Add'
+import RefreshIcon from '@mui/icons-material/Refresh'
+import WarningAmberIcon from '@mui/icons-material/WarningAmber'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import axios from 'axios'
 
 import { PriorityBadge, SLABadge, StatusBadge } from '../components/ui/SemanticBadges'
+import { AvailabilityBadge, getAvailStatus } from '../components/ui/AvailabilityBadge'
 import EmployeeTicketDetailsModal from '../components/EmployeeTicketDetailsModal'
+import { availabilityApi } from '../api/services'
+import type { AgentAvailability, SyncStatus } from '../types'
 
-const API_BASE = 'http://localhost:8000'
+const API_BASE = import.meta.env.VITE_API_BASE ?? ''
 
 interface Ticket {
   id: number
@@ -51,11 +58,19 @@ export default function DashboardPage() {
   const context = useOutletContext<{ currentRole?: string }>()
   const currentRole = context?.currentRole || 'employee'
   const isEmployee = currentRole === 'employee'
+  const isManager = currentRole === 'manager' || currentRole === 'admin'
 
   const [viewMode, setViewMode] = useState<'rows' | 'table'>('rows')
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [stats, setStats] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+
+  // Availability panel (manager only)
+  const [agents, setAgents] = useState<AgentAvailability[]>([])
+  const [agentsLoading, setAgentsLoading] = useState(false)
+  const [agentsError, setAgentsError] = useState<string | null>(null)
+  const [agentsLastRefresh, setAgentsLastRefresh] = useState<Date | null>(null)
+  const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(null)
 
   // Employee details modal state
   const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null)
@@ -84,18 +99,56 @@ export default function DashboardPage() {
         axios.get(`${API_BASE}/ticket/all`, { headers }),
         axios.get(`${API_BASE}/ticket/stats`),
       ])
-      setTickets(tRes.data)
+      setTickets(Array.isArray(tRes.data) ? tRes.data : [])
       setStats(sRes.data)
     } catch (err) {
       console.error('Error fetching dashboard tickets:', err)
+      setTickets([])
     } finally {
       setLoading(false)
     }
   }
 
+  const fetchAgents = async () => {
+    if (!isManager) return
+    setAgentsLoading(true); setAgentsError(null)
+    try {
+      const [res, sRes] = await Promise.all([
+        availabilityApi.getAvailableNow(),
+        availabilityApi.getSyncStatus().catch(() => ({ data: null })),
+      ])
+      const data = Array.isArray(res.data) ? res.data : []
+      // Sort available agents first
+      data.sort((a, b) => (a.available === b.available ? 0 : a.available ? -1 : 1))
+      setAgents(data)
+      if (sRes?.data) setSyncStatus(sRes.data)
+      setAgentsLastRefresh(new Date())
+    } catch (e: any) {
+      if (e?.response?.status !== 403)
+        setAgentsError('Could not load agent availability.')
+      setAgents([])
+    } finally { setAgentsLoading(false) }
+  }
+
   useEffect(() => {
     fetchDashboardData()
   }, [currentRole])
+
+  // Agents loaded independently for manager role only
+  useEffect(() => {
+    if (isManager) {
+      fetchAgents()
+    } else {
+      setAgents([])
+    }
+  }, [isManager, currentRole])
+
+  // Auto-refresh agents every 60 seconds (manager only)
+  useEffect(() => {
+    if (!isManager) return
+    const interval = setInterval(fetchAgents, 60_000)
+    return () => clearInterval(interval)
+  }, [isManager])
 
   const handleTicketClick = (ticketId: number) => {
     if (isEmployee) {
@@ -109,12 +162,14 @@ export default function DashboardPage() {
   const ACTIVE_STATUSES = ['new', 'open', 'assigned', 'in_progress', 'waiting_for_user', 'on_hold']
   const FINAL_STATUSES = ['resolved', 'closed', 'cancelled']
 
+  const safeTickets = Array.isArray(tickets) ? tickets : []
+
   const userTickets = isEmployee
-    ? tickets.filter((t) => {
+    ? safeTickets.filter((t) => {
         const req = (t.requester_name || '').toLowerCase()
         return req.includes('alice') || req.includes('employee') || req === ''
       })
-    : tickets
+    : safeTickets
 
   const activeTickets = userTickets.filter((t) => ACTIVE_STATUSES.includes((t.status || 'open').toLowerCase()))
   const resolvedTickets = userTickets.filter((t) => FINAL_STATUSES.includes((t.status || 'open').toLowerCase()))
@@ -180,9 +235,11 @@ export default function DashboardPage() {
                   {!isEmployee && <SLABadge badge={ticket.sla_badge} />}
                 </Box>
 
-                <Typography variant="h6" fontWeight={700} noWrap title={ticket.title} style={{ color: theme.palette.text.primary, marginBottom: 4 }}>
-                  #{isEmployee ? index + 1 : ticket.id} - {ticket.title}
-                </Typography>
+                <Box display="flex" alignItems="center" gap={0.5} mb={0.5}>
+                  <Typography variant="h6" fontWeight={700} noWrap title={ticket.title} style={{ color: theme.palette.text.primary }}>
+                    #{isEmployee ? index + 1 : ticket.id} - {ticket.title}
+                  </Typography>
+                </Box>
 
                 <Typography variant="body2" style={{ color: theme.palette.text.secondary, height: 38, overflow: 'hidden' }}>
                   {ticket.description}
@@ -212,7 +269,6 @@ export default function DashboardPage() {
 
   return (
     <Box>
-      {/* Header Banners */}
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Box>
           <Typography variant="h2" fontWeight={800}>
@@ -300,6 +356,94 @@ export default function DashboardPage() {
         </Grid>
       </Grid>
 
+      {/* Who is available now — manager only */}
+      {isManager && (
+        <Box mb={4}>
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={1.5} flexWrap="wrap" gap={1}>
+            <Typography variant="h5" fontWeight={700}>Who Is Available Now</Typography>
+            <Box display="flex" alignItems="center" gap={1.5} flexWrap="wrap">
+              {agentsLastRefresh && (
+                <Typography variant="caption" style={{ color: theme.palette.text.secondary }}>
+                  Updated {agentsLastRefresh.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </Typography>
+              )}
+              <Tooltip title="Refresh availability">
+                <Button size="small" onClick={fetchAgents} disabled={agentsLoading}
+                  startIcon={agentsLoading ? <CircularProgress size={12} /> : <RefreshIcon />}
+                  style={{ color: '#2563EB' }}>
+                  Refresh
+                </Button>
+              </Tooltip>
+            </Box>
+          </Box>
+          {syncStatus?.stale && (
+            <Alert severity="warning" sx={{ mb: 1.5 }}>
+              ⚠️ Warning: HR Leave sync is delayed (last sync &gt; 60 minutes ago). Availability data may not reflect recent HR changes.
+            </Alert>
+          )}
+          {agentsError && <Alert severity="warning" sx={{ mb: 1 }}>{agentsError}</Alert>}
+          {agents.length === 0 && !agentsLoading && !agentsError && (
+            <Paper sx={{ p: 3, textAlign: 'center', border: '1px dashed', borderColor: 'divider' }}>
+              <Typography variant="body2" style={{ color: theme.palette.text.secondary }}>
+                No agents found. Shifts can be configured in Shifts &amp; On-Call.
+              </Typography>
+            </Paper>
+          )}
+          <Grid container spacing={2}>
+            {(Array.isArray(agents) ? agents : []).map((agent) => {
+              const status = getAvailStatus(agent)
+              const tz = agent.timezone === 'UTC' ? 'IST' : (agent.timezone || 'IST')
+              return (
+                <Grid item xs={12} sm={6} md={3} key={agent.id}>
+                  <Card sx={{
+                    border: status === 'available'
+                      ? '1.5px solid #A7F3D0'
+                      : status === 'at_capacity'
+                      ? '1.5px solid #FCA5A5'
+                      : `1px solid ${theme.palette.divider}`,
+                  }}>
+                    <CardContent sx={{ p: 2 }}>
+                      <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
+                        <Typography variant="body2" fontWeight={700} style={{ color: theme.palette.text.primary }}>
+                          {agent.name}
+                        </Typography>
+                        <AvailabilityBadge status={status} />
+                      </Box>
+                      <Box display="flex" alignItems="center" gap={1} mb={0.5}>
+                        <Typography variant="caption" style={{ color: theme.palette.text.secondary }}>
+                          {agent.team}
+                        </Typography>
+                        <Chip
+                          label={agent.skills || 'Network'}
+                          size="small"
+                          style={{
+                            height: 18,
+                            fontSize: '0.65rem',
+                            fontWeight: 700,
+                            backgroundColor: theme.palette.mode === 'light' ? '#EFF6FF' : '#1E293B',
+                            color: '#2563EB',
+                          }}
+                        />
+                      </Box>
+                      <Box mt={1} pt={1} borderTop={`1px solid ${theme.palette.divider}`} display="flex" justifyContent="space-between" alignItems="center">
+                        <Typography variant="caption" fontWeight={600} style={{ color: theme.palette.text.secondary }}>
+                          {agent.open_tickets}/{agent.ticket_cap} tickets
+                        </Typography>
+                        <Typography variant="caption" fontWeight={600} style={{ color: theme.palette.text.secondary }}>
+                          {agent.on_leave
+                            ? `On leave until ${agent.leave_until || 'upcoming'}${agent.leave_source === 'hr_sync' ? ' (via HR)' : ''}`
+                            : (agent.shift_end ? `Shift ends ${agent.shift_end}` : (status === 'off_shift' ? 'Off shift' : tz))}
+                        </Typography>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              )
+            })}
+          </Grid>
+        </Box>
+      )}
+
       {/* Main Rows or Table View */}
       {viewMode === 'rows' ? (
         <Box>
@@ -346,10 +490,12 @@ export default function DashboardPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-              {tickets.map((t) => (
+              {(Array.isArray(tickets) ? tickets : []).map((t) => (
                 <TableRow key={t.id} hover onClick={() => handleTicketClick(t.id)} style={{ cursor: 'pointer' }}>
                   <TableCell style={{ fontWeight: 700, color: '#2563EB' }}>#{t.id}</TableCell>
-                  <TableCell style={{ fontWeight: 600, color: theme.palette.text.primary }}>{t.title}</TableCell>
+                  <TableCell style={{ fontWeight: 600, color: theme.palette.text.primary }}>
+                    {t.title}
+                  </TableCell>
                   <TableCell><PriorityBadge priority={t.priority} /></TableCell>
                   <TableCell>{t.category || 'General IT'}</TableCell>
                   {!isEmployee && (
