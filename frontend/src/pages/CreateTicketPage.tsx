@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Box,
   Typography,
@@ -21,6 +21,7 @@ import {
   FormControlLabel,
   Snackbar,
   IconButton,
+  Collapse,
 } from '@mui/material'
 import SendIcon from '@mui/icons-material/Send'
 import CancelIcon from '@mui/icons-material/Cancel'
@@ -29,8 +30,15 @@ import LockIcon from '@mui/icons-material/Lock'
 import GroupIcon from '@mui/icons-material/Group'
 import AccessTimeIcon from '@mui/icons-material/AccessTime'
 import CloseIcon from '@mui/icons-material/Close'
+import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined'
+import CheckCircleIcon from '@mui/icons-material/CheckCircle'
+import ThumbDownAltOutlinedIcon from '@mui/icons-material/ThumbDownAltOutlined'
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
+import { fixesApi } from '../api/services'
+import type { SuggestedFix } from '../types'
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? ''
 
@@ -60,6 +68,78 @@ export default function CreateTicketPage() {
   // Ticket Created Confirmation Modal
   const [successDialogOpen, setSuccessDialogOpen] = useState(false)
   const [createdTicket, setCreatedTicket] = useState<any>(null)
+
+  // Fix suggestions state ("Fixes that worked before")
+  const [suggestions, setSuggestions] = useState<SuggestedFix[]>([])
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false)
+  const [solvedMessage, setSolvedMessage] = useState<string | null>(null)
+  const [dismissedSuggestionIds, setDismissedSuggestionIds] = useState<number[]>([])
+  const [expandedSummaryIds, setExpandedSummaryIds] = useState<Record<number, boolean>>({})
+
+  // Debounced fetch for suggestions: 5+ words in title OR 20+ chars in description, 800ms wait
+  useEffect(() => {
+    const wordCount = title.trim() ? title.trim().split(/\s+/).length : 0
+    const charCount = description.trim().length
+
+    if (wordCount < 5 && charCount < 20) {
+      setSuggestions([])
+      return
+    }
+
+    const timer = setTimeout(async () => {
+      if (interstitialOpen) return
+
+      try {
+        setLoadingSuggestions(true)
+        const res = await fixesApi.suggestFixes(title, description, department)
+        if (Array.isArray(res.data)) {
+          setSuggestions(res.data)
+        } else {
+          setSuggestions([])
+        }
+      } catch (err) {
+        console.warn('Error fetching fix suggestions:', err)
+        setSuggestions([])
+      } finally {
+        setLoadingSuggestions(false)
+      }
+    }, 800)
+
+    return () => clearTimeout(timer)
+  }, [title, description, department, interstitialOpen])
+
+  const handleSolved = async (s: SuggestedFix) => {
+    try {
+      await fixesApi.recordFeedback({
+        suggestion_ticket_id: s.ticket_id,
+        action: 'solved',
+        relevance: s.relevance,
+        query_text: `${title} ${description}`,
+      })
+    } catch (e) {
+      console.warn('Feedback error:', e)
+    }
+    setSolvedMessage(`Thank you! Ticket #${s.ticket_id} marked as solving your issue. No new ticket was submitted.`)
+    setSuggestions([])
+  }
+
+  const handleNotHelpful = async (s: SuggestedFix) => {
+    try {
+      await fixesApi.recordFeedback({
+        suggestion_ticket_id: s.ticket_id,
+        action: 'not_helpful',
+        relevance: s.relevance,
+        query_text: `${title} ${description}`,
+      })
+    } catch (e) {
+      console.warn('Feedback error:', e)
+    }
+    setDismissedSuggestionIds((prev) => [...prev, s.ticket_id])
+  }
+
+  const toggleExpand = (id: number) => {
+    setExpandedSummaryIds((prev) => ({ ...prev, [id]: !prev[id] }))
+  }
 
   const handleFollowTicket = async () => {
     if (!interstitialMatch) return
@@ -138,12 +218,19 @@ export default function CreateTicketPage() {
         } catch (e) {}
       }
 
+      const suggestionsTried = suggestions.map((s) => ({
+        ticket_id: s.ticket_id,
+        title: s.title,
+        relevance: s.relevance,
+      }))
+
       const res = await axios.post(`${API_BASE}/ticket/create`, {
         title,
         description,
         requester_name: requesterName,
         requester_department: department,
         skip_duplicate_check: forceSkipCheck,
+        suggestions_tried: suggestionsTried.length > 0 ? suggestionsTried : undefined,
       }, { headers })
 
       if (res.data.is_hard_blocked) {
@@ -302,6 +389,142 @@ export default function CreateTicketPage() {
               <Alert severity="info" sx={{ borderRadius: 2 }}>
                 Possibly related: #{inlineMatch.ticket_id} ({inlineMatch.title})
               </Alert>
+            )}
+
+            {/* Solved Deflection Notice */}
+            {solvedMessage && (
+              <Alert
+                severity="success"
+                icon={<CheckCircleIcon fontSize="inherit" />}
+                action={
+                  <IconButton size="small" aria-label="close" color="inherit" onClick={() => setSolvedMessage(null)}>
+                    <CloseIcon fontSize="small" />
+                  </IconButton>
+                }
+                sx={{ borderRadius: 2 }}
+              >
+                {solvedMessage}
+              </Alert>
+            )}
+
+            {/* Fixes that worked before (Recommended similar resolved tickets) */}
+            {!interstitialOpen && suggestions.filter((s) => !dismissedSuggestionIds.includes(s.ticket_id)).length > 0 && (
+              <Card
+                variant="outlined"
+                sx={{
+                  bgcolor: theme.palette.mode === 'light' ? '#F0FDF4' : '#062012',
+                  borderColor: theme.palette.mode === 'light' ? '#BBF7D0' : '#166534',
+                  borderRadius: 2,
+                }}
+              >
+                <CardContent sx={{ pb: '16px !important' }}>
+                  <Box display="flex" alignItems="center" gap={1} mb={1.5}>
+                    <LightbulbOutlinedIcon sx={{ color: '#16A34A', fontSize: 22 }} />
+                    <Typography variant="subtitle1" fontWeight={700} sx={{ color: theme.palette.mode === 'light' ? '#15803D' : '#4ADE80' }}>
+                      Fixes that worked before
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', ml: 'auto' }}>
+                      Similar resolved issues
+                    </Typography>
+                  </Box>
+
+                  <Stack spacing={1.5}>
+                    {suggestions
+                      .filter((s) => !dismissedSuggestionIds.includes(s.ticket_id))
+                      .slice(0, 3)
+                      .map((s) => {
+                        const isExpanded = Boolean(expandedSummaryIds[s.ticket_id])
+                        const pct = Math.round(s.relevance * 100)
+                        const isTruncated = s.resolution_summary.length > 130
+                        const displaySummary = isExpanded || !isTruncated
+                          ? s.resolution_summary
+                          : s.resolution_summary.slice(0, 130) + '...'
+
+                        return (
+                          <Paper
+                            key={s.ticket_id}
+                            elevation={0}
+                            sx={{
+                              p: 2,
+                              borderRadius: 2,
+                              border: `1px solid ${theme.palette.divider}`,
+                              bgcolor: 'background.paper',
+                            }}
+                          >
+                            <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={1} mb={1}>
+                              <Box>
+                                <Typography variant="body2" fontWeight={700} color="text.primary">
+                                  #{s.ticket_id} — {s.title}
+                                </Typography>
+                                <Box display="flex" alignItems="center" gap={1} mt={0.5}>
+                                  <Chip label={s.category || 'General IT'} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.7rem' }} />
+                                  {s.resolved_at && (
+                                    <Typography variant="caption" color="text.secondary">
+                                      Resolved {new Date(s.resolved_at).toLocaleDateString()}
+                                    </Typography>
+                                  )}
+                                </Box>
+                              </Box>
+                              <Chip
+                                label={`${pct}% Match`}
+                                size="small"
+                                sx={{
+                                  height: 22,
+                                  fontWeight: 700,
+                                  fontSize: '0.72rem',
+                                  bgcolor: pct >= 80 ? '#DCFCE7' : '#FEF3C7',
+                                  color: pct >= 80 ? '#15803D' : '#92400E',
+                                }}
+                              />
+                            </Box>
+
+                            <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', mb: 1.5, lineHeight: 1.5 }}>
+                              {displaySummary}
+                              {isTruncated && (
+                                <Button
+                                  size="small"
+                                  onClick={() => toggleExpand(s.ticket_id)}
+                                  sx={{ p: 0, minWidth: 'auto', ml: 1, textTransform: 'none', fontWeight: 600, fontSize: '0.75rem' }}
+                                >
+                                  {isExpanded ? 'Show less' : 'Read more'}
+                                </Button>
+                              )}
+                            </Typography>
+
+                            <Box display="flex" justifyContent="flex-end" alignItems="center" gap={1}>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                color="inherit"
+                                onClick={() => handleNotHelpful(s)}
+                                startIcon={<ThumbDownAltOutlinedIcon sx={{ fontSize: 15 }} />}
+                                sx={{ textTransform: 'none', fontSize: '0.75rem', px: 1.5, py: 0.5 }}
+                              >
+                                Not helpful
+                              </Button>
+                              <Button
+                                size="small"
+                                variant="contained"
+                                onClick={() => handleSolved(s)}
+                                startIcon={<CheckCircleIcon sx={{ fontSize: 16 }} />}
+                                sx={{
+                                  textTransform: 'none',
+                                  fontSize: '0.75rem',
+                                  px: 2,
+                                  py: 0.5,
+                                  bgcolor: '#16A34A',
+                                  '&:hover': { bgcolor: '#15803D' },
+                                }}
+                              >
+                                This solved it
+                              </Button>
+                            </Box>
+                          </Paper>
+                        )
+                      })}
+                  </Stack>
+                </CardContent>
+              </Card>
             )}
 
             <Divider sx={{ my: 1 }} />

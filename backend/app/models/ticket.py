@@ -51,6 +51,7 @@ class Ticket(Base):
     created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     requester_name = Column(String(100), nullable=True)
     requester_department = Column(String(100), nullable=True)
+    suggestions_tried = Column(Text, nullable=True)  # JSON or text list of suggestions shown to user
     
     # Requesters relationship (1 master ticket can have multiple linked requesters)
     requesters = relationship("TicketRequester", back_populates="ticket", cascade="all, delete-orphan")
@@ -68,3 +69,14 @@ class Ticket(Base):
     escalated_to_manager = Column(Boolean, default=False)
     escalated_at = Column(DateTime, nullable=True)
     is_demo = Column(Boolean, default=False, nullable=True)
+
+class SuggestionFeedback(Base):
+    __tablename__ = "suggestion_feedback"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    query_text = Column(Text, nullable=True)
+    suggested_ticket_id = Column(Integer, ForeignKey("tickets.id"), nullable=False)
+    action = Column(String(50), nullable=False)  # "solved" | "not_helpful" | "still_need_help" | "shown"
+    relevance = Column(Float, nullable=False, default=0.0)
+    created_at = Column(DateTime, default=func.now())

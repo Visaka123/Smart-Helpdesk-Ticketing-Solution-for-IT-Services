@@ -73,6 +73,15 @@ Modern enterprise IT departments process thousands of support tickets, facing ch
 - **Manager Command Center** — Real-time SLA compliance percentages, team volume breakdown, breach count tracking, and manager escalation logs.
 - **Analytics View** — Visual charts for category distribution, priority breakdown, SLA compliance, and team ticket volume.
 
+### 6. Similar Resolved Ticket Recommendations (Self-Service Deflection)
+- **"Fixes That Worked Before"** — Proactively recommends top 3 historically resolved tickets with actionable fixes as users type ($\ge 5$ words in title or $\ge 20$ chars in description, 800ms debounce).
+- **Precision Matching & Filtering** — Combines semantic embedding cosine similarity and lexical token overlap with category preference (+0.05). Requires relevance $\ge 60\%$ AND at least one specific shared technical term (system codes like `809`, error patterns, hostnames), down-weighting generic terms (`quota`, `error`, `failed`, `issue`, `not working`, `unable`).
+- **Privacy & Security Sanitization** — Automatically strips emails, IPv4 addresses, passwords/tokens/keys, internal hostnames (`*.corp`, `*.local`, `*-srv`), and resolver names from resolution summaries, truncating to $\le 300$ characters.
+- **1-Click Self-Service Deflection** — Users can click *"This solved it"* to resolve their problem immediately without submitting a ticket, capturing deflection telemetry. Clicking *"Not helpful"* dismisses the card and logs feedback.
+- **Suggestions Tried by User** — If the user submits a ticket after viewing suggestions, the attempted solutions are saved on the ticket and highlighted to support agents to prevent redundant troubleshooting steps.
+- **Agent Resolution Re-use** — Agents can review "Fixes that worked before" in their workspace and click *"Use this resolution"* to copy the text into the reply and resolution boxes.
+- **Deflection Analytics** — Executive card in SLA Analytics tracking suggestions shown, solved count, deflection ratio, and top 5 most helpful resolved tickets.
+
 ---
 
 ## System Architecture
@@ -161,6 +170,7 @@ smart-helpdesk/
 │   │   ├── priority/                # Priority inference service
 │   │   ├── routing/                # ML team classification predictor service
 │   │   ├── sla/                    # SLA calculation & email escalation service
+│   │   ├── suggestions/            # Similar resolved recommendations & deflection service
 │   │   ├── tickets/                # Ticket CRUD & pre-check endpoints
 │   │   └── main.py                 # FastAPI application entry point & APScheduler startup
 │   ├── model_assets/
@@ -356,14 +366,28 @@ Use the **Switch Role** control in the header to switch between roles:
 - `GET /agent/agent-stats` — fetch operational agent statistics.
 - `GET /agent/manager-dashboard` — fetch manager escalation metrics and team performance.
 
+### Similar Resolved Suggestions & Deflection (`/tickets/suggest-fixes`, `/analytics/deflection`)
+- `POST /tickets/suggest-fixes` — find top 3 relevant previously resolved tickets with sanitized resolution summaries ($\ge 60\%$ relevance, specific shared terms).
+- `POST /tickets/suggest-fixes/feedback` — record feedback (`"solved"`, `"not_helpful"`, `"still_need_help"`) for self-service deflection metrics.
+- `GET /analytics/deflection` — get self-service deflection metrics (suggestions shown, solved count, deflection rate, top 5 helpful tickets).
+
 ---
 
 ## Testing Guide
 
-The repository includes test scripts in `backend/` to validate API routes, authentication, duplicate detection, and SLA escalation logic:
+The repository includes test suites and scripts in `backend/` to validate API routes, authentication, duplicate detection, resolved suggestions, and SLA escalation logic:
 
 ```bash
 cd backend
+
+# Test Similar Resolved Ticket Recommendations (7 verification tests)
+python -m pytest tests/test_suggest_fixes.py
+
+# Test Duplicate Interstitial modal and thresholds
+python -m pytest tests/test_duplicate_interstitial.py
+
+# Test Relaxed & In-Work Availability Assignment Chain
+python -m pytest tests/test_relaxed_assignment_chain.py
 
 # Test employee portal endpoints and duplicate detection
 python test_employee_portal_and_dedup.py

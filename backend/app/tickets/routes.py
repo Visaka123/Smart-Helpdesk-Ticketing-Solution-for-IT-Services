@@ -13,6 +13,11 @@ from app.duplicate.service import detect_hybrid_duplicates, record_duplicate_fee
 from app.chatbot.service import RAG_chatbot_query
 from app.auth.rbac import get_current_user_from_headers
 from app.availability.service import assign_agent_for_ticket
+from app.suggestions.service import (
+    find_suggested_fixes,
+    record_suggestion_feedback,
+    get_deflection_analytics,
+)
 
 router = APIRouter()
 
@@ -24,6 +29,7 @@ class TicketCreateRequest(BaseModel):
     requester_department: Optional[str] = "Finance"
     skip_duplicate_check: Optional[bool] = False
     is_demo: Optional[bool] = False
+    suggestions_tried: Optional[Any] = None
 
 class RouteTicketRequest(BaseModel):
     title: Optional[str] = ""
@@ -33,6 +39,17 @@ class RouteTicketRequest(BaseModel):
 class DuplicateCheckRequest(BaseModel):
     title: str
     description: str
+
+class SuggestFixesRequest(BaseModel):
+    title: str
+    description: str
+    category: Optional[str] = None
+
+class SuggestionFeedbackRequest(BaseModel):
+    suggestion_ticket_id: int
+    action: str  # "solved" | "not_helpful" | "still_need_help"
+    relevance: Optional[float] = 0.0
+    query_text: Optional[str] = ""
 
 class FollowTicketRequest(BaseModel):
     requester_name: Optional[str] = "Alice Employee"
@@ -172,6 +189,73 @@ def log_duplicate_decision_endpoint(req: DuplicateDecisionRequest):
         user_action=req.decision
     )
     return {"success": True, "decision": req.decision}
+
+@router.post("/suggest-fixes")
+@router.post("/tickets/suggest-fixes")
+def suggest_fixes_endpoint(req: SuggestFixesRequest):
+    """
+    Suggests previously resolved tickets with similar issues ("Fixes that worked before").
+    Graceful degradation: on error, returns empty list without breaking the caller.
+    """
+    db = SessionLocal()
+    try:
+        results = find_suggested_fixes(
+            title=req.title or "",
+            description=req.description or "",
+            category=req.category,
+            db=db,
+        )
+        return results
+    except Exception as e:
+        print(f"[WARN] Error in suggest_fixes_endpoint: {e}")
+        return []
+    finally:
+        db.close()
+
+@router.post("/suggest-fixes/feedback")
+@router.post("/tickets/suggest-fixes/feedback")
+def suggestion_feedback_endpoint(req: SuggestionFeedbackRequest, request: Request):
+    """
+    Stores suggestion feedback ("solved", "not_helpful", "still_need_help").
+    """
+    db = SessionLocal()
+    try:
+        user = get_current_user_from_headers(request, db)
+        user_id = user.id if user else None
+        record_suggestion_feedback(
+            suggestion_ticket_id=req.suggestion_ticket_id,
+            action=req.action,
+            relevance=req.relevance or 0.0,
+            user_id=user_id,
+            query_text=req.query_text or "",
+            db=db,
+        )
+        return {"status": "ok", "action": req.action, "suggestion_ticket_id": req.suggestion_ticket_id}
+    except Exception as e:
+        print(f"[WARN] Error in suggestion_feedback_endpoint: {e}")
+        return {"status": "error", "detail": str(e)}
+    finally:
+        db.close()
+
+@router.get("/analytics/deflection")
+def deflection_analytics_endpoint():
+    """
+    Calculates deflection metrics: suggestions shown, solved count, deflection rate, top helpful tickets.
+    """
+    db = SessionLocal()
+    try:
+        metrics = get_deflection_analytics(db=db)
+        return metrics
+    except Exception as e:
+        print(f"[WARN] Error in deflection_analytics_endpoint: {e}")
+        return {
+            "suggestions_shown": 0,
+            "solved_count": 0,
+            "deflection_rate": 0.0,
+            "top_helpful_tickets": []
+        }
+    finally:
+        db.close()
 
 @router.post("/create")
 def create_ticket(req: TicketCreateRequest, request: Request):
@@ -330,6 +414,16 @@ def create_ticket(req: TicketCreateRequest, request: Request):
 
     is_demo_ticket = bool(getattr(req, "is_demo", False) or "[demo]" in req.title.lower() or "[demo]" in req.description.lower())
 
+    suggestions_tried_str = None
+    if req.suggestions_tried:
+        if isinstance(req.suggestions_tried, str):
+            suggestions_tried_str = req.suggestions_tried
+        else:
+            try:
+                suggestions_tried_str = json.dumps(req.suggestions_tried)
+            except Exception:
+                suggestions_tried_str = str(req.suggestions_tried)
+
     ticket = Ticket(
         title=req.title,
         description=req.description,
@@ -344,6 +438,7 @@ def create_ticket(req: TicketCreateRequest, request: Request):
         created_by=created_by_id,
         requester_name=req_name,
         requester_department=req_dept,
+        suggestions_tried=suggestions_tried_str,
         created_at=now_dt,
         sla_due_at=sla_due,
         is_demo=is_demo_ticket,
@@ -352,6 +447,30 @@ def create_ticket(req: TicketCreateRequest, request: Request):
     db.add(ticket)
     db.commit()
     db.refresh(ticket)
+
+    # Record "still_need_help" feedback for suggestions tried
+    if req.suggestions_tried:
+        try:
+            items = req.suggestions_tried
+            if isinstance(items, str):
+                try:
+                    items = json.loads(items)
+                except Exception:
+                    items = []
+            if isinstance(items, list):
+                for it in items:
+                    s_id = it.get("ticket_id") if isinstance(it, dict) else (it if isinstance(it, int) else None)
+                    if s_id:
+                        record_suggestion_feedback(
+                            suggestion_ticket_id=int(s_id),
+                            action="still_need_help",
+                            relevance=float(it.get("relevance", 0.0)) if isinstance(it, dict) else 0.0,
+                            user_id=created_by_id,
+                            query_text=f"{req.title} {req.description}",
+                            db=db,
+                        )
+        except Exception as _fb_err:
+            print(f"[WARN] Failed to record still_need_help feedback: {_fb_err}")
 
     # ── Availability-aware agent assignment (B6: graceful degradation) ────
     assignment_reason = None
@@ -408,6 +527,7 @@ def create_ticket(req: TicketCreateRequest, request: Request):
             "sla_due_at": str(ticket.sla_due_at),
             "sla_hours": sla_hours,
             "is_demo": bool(ticket.is_demo),
+            "suggestions_tried": ticket.suggestions_tried,
             "assigned_agent_name": ticket.assigned_agent_name,
             "assigned_agent_id": ticket.assigned_agent_id,
             "assignment_reason": assignment_reason or (f"Assigned to {ticket.assigned_agent_name}" if ticket.assigned_agent_name else "Queued for assignment"),

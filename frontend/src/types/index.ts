@@ -33,6 +33,37 @@ export interface Ticket {
   updated_at?: string
   requester_name?: string
   routing_confidence?: number
+  suggestions_tried?: string
+}
+
+export interface SuggestedFix {
+  ticket_id: number
+  title: string
+  category: string
+  relevance: number
+  resolution_summary: string
+  resolved_at?: string
+  resolved_by_team?: string
+}
+
+export interface SuggestionFeedbackPayload {
+  suggestion_ticket_id: number
+  action: 'solved' | 'not_helpful' | 'still_need_help'
+  relevance?: number
+  query_text?: string
+}
+
+export interface DeflectionAnalytics {
+  suggestions_shown: number
+  solved_count: number
+  deflection_rate: number
+  top_helpful_tickets: Array<{
+    ticket_id: number
+    title: string
+    category: string
+    solved_count: number
+    resolution_summary: string
+  }>
 }
 
 export interface TicketStats {
@@ -87,6 +118,7 @@ export interface ChatbotResponse {
 export interface CreateTicketPayload {
   title: string
   description: string
+  suggestions_tried?: any
 }
 
 export interface CreateTicketResponse {

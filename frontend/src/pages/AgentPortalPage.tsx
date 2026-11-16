@@ -35,7 +35,12 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import LockIcon from '@mui/icons-material/Lock'
 import AccessTimeIcon from '@mui/icons-material/AccessTime'
 import BeachAccessIcon from '@mui/icons-material/BeachAccess'
+import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined'
+import ContentCopyIcon from '@mui/icons-material/ContentCopy'
+import HistoryEduIcon from '@mui/icons-material/HistoryEdu'
 import axios from 'axios'
+import { fixesApi } from '../api/services'
+import type { SuggestedFix } from '../types'
 
 import { PriorityBadge, SLABadge, StatusBadge } from '../components/ui/SemanticBadges'
 import { ITSMTimeline } from '../components/ui/ITSMTimeline'
@@ -84,6 +89,8 @@ export default function AgentPortalPage() {
   const [ticketDetail, setTicketDetail] = useState<any>(null)
   const [recommendations, setRecommendations] = useState<any[]>([])
   const [loadingRecommendations, setLoadingRecommendations] = useState(false)
+  const [workedFixes, setWorkedFixes] = useState<SuggestedFix[]>([])
+  const [loadingWorkedFixes, setLoadingWorkedFixes] = useState(false)
   const [detailOpen, setDetailOpen] = useState(false)
 
   // Agent Workspace UI state
@@ -164,6 +171,8 @@ export default function AgentPortalPage() {
     setSelectedTicketId(id)
     setShowResolveForm(false)
     setRecommendations([])
+    setWorkedFixes([])
+    setLoadingWorkedFixes(true)
 
     // 1. INSTANT MODAL OPEN (0ms blocking delay) using queue ticket data if available
     const existingInQueue = tickets.find((t) => t.id === id)
@@ -179,6 +188,11 @@ export default function AgentPortalPage() {
       if (existingInQueue.status === 'resolved' || existingInQueue.status === 'closed') {
         setShowResolveForm(true)
       }
+      fixesApi
+        .suggestFixes(existingInQueue.title, existingInQueue.description, existingInQueue.category)
+        .then((fRes) => setWorkedFixes(Array.isArray(fRes.data) ? fRes.data : []))
+        .catch(() => setWorkedFixes([]))
+        .finally(() => setLoadingWorkedFixes(false))
     }
     setDetailOpen(true) // Open modal shell IMMEDIATELY!
 
@@ -212,6 +226,12 @@ export default function AgentPortalPage() {
         if (res.data.status === 'resolved' || res.data.status === 'closed') {
           setShowResolveForm(true)
         }
+
+        fixesApi
+          .suggestFixes(res.data.title, res.data.description, res.data.category)
+          .then((fRes) => setWorkedFixes(Array.isArray(fRes.data) ? fRes.data : []))
+          .catch(() => setWorkedFixes([]))
+          .finally(() => setLoadingWorkedFixes(false))
 
         // Stream recommendations asynchronously in background
         setLoadingRecommendations(true)
@@ -677,8 +697,85 @@ export default function AgentPortalPage() {
               <KnowledgeRecommendationPanel articles={recommendations} loading={loadingRecommendations} />
             )}
 
-            {/* SIMILAR RESOLVED TICKETS */}
-            {ticketDetail.similar_tickets && ticketDetail.similar_tickets.length > 0 && (
+            {/* SUGGESTIONS TRIED BY USER */}
+            {ticketDetail.suggestions_tried && (() => {
+              let triedList: any[] = []
+              try {
+                const parsed = typeof ticketDetail.suggestions_tried === 'string' ? JSON.parse(ticketDetail.suggestions_tried) : ticketDetail.suggestions_tried
+                triedList = Array.isArray(parsed) ? parsed : [parsed]
+              } catch {
+                triedList = [{ title: ticketDetail.suggestions_tried }]
+              }
+              if (triedList.length === 0) return null
+              return (
+                <Paper sx={{ p: 2, bgcolor: theme.palette.mode === 'light' ? '#FEF2F2' : '#2A1215', border: '1px solid #FECACA', borderRadius: 2, mb: 2 }}>
+                  <Typography variant="caption" fontWeight={800} sx={{ color: '#DC2626', display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+                    <HistoryEduIcon sx={{ fontSize: 16 }} /> SUGGESTIONS TRIED BY USER (DO NOT REPEAT):
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" display="block" mb={1}>
+                    The employee already attempted these self-service solutions before submitting the ticket:
+                  </Typography>
+                  <Box display="flex" flexDirection="column" gap={0.5}>
+                    {triedList.map((item: any, idx: number) => (
+                      <Typography key={idx} variant="caption" sx={{ color: '#991B1B', fontWeight: 600 }}>
+                        • {item.ticket_id ? `#${item.ticket_id}: ` : ''}{item.title || JSON.stringify(item)}
+                      </Typography>
+                    ))}
+                  </Box>
+                </Paper>
+              )
+            })()}
+
+            {/* FIXES THAT WORKED BEFORE */}
+            {workedFixes && workedFixes.length > 0 && (
+              <Paper sx={{ p: 2, bgcolor: theme.palette.mode === 'light' ? '#F0FDF4' : '#062012', border: '1px solid #BBF7D0', borderRadius: 2, mb: 2.5 }}>
+                <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                  <Typography variant="caption" fontWeight={800} sx={{ color: '#15803D', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <LightbulbOutlinedIcon sx={{ fontSize: 16 }} /> FIXES THAT WORKED BEFORE:
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {workedFixes.length} similar resolved incidents
+                  </Typography>
+                </Box>
+                <Box display="flex" flexDirection="column" gap={1.5}>
+                  {workedFixes.map((st) => {
+                    const validPct = Math.round(st.relevance * 100)
+                    return (
+                      <Box key={st.ticket_id} sx={{ p: 1.5, bgcolor: 'background.paper', borderRadius: 1.5, border: `1px solid ${theme.palette.divider}` }}>
+                        <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
+                          <Typography variant="body2" fontWeight={700} sx={{ color: theme.palette.text.primary }}>
+                            #{st.ticket_id} - {st.title}
+                          </Typography>
+                          <Chip label={`${validPct}% Match`} size="small" sx={{ height: 20, fontSize: '0.7rem', fontWeight: 700, bgcolor: '#DCFCE7', color: '#15803D' }} />
+                        </Box>
+                        {st.resolution_summary && (
+                          <Typography variant="caption" display="block" sx={{ color: theme.palette.text.secondary, fontStyle: 'italic', mb: 1 }}>
+                            Fix: {st.resolution_summary}
+                          </Typography>
+                        )}
+                        <Box display="flex" justifyContent="flex-end">
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            startIcon={<ContentCopyIcon sx={{ fontSize: 14 }} />}
+                            onClick={() => {
+                              setCommentText(st.resolution_summary)
+                              setResolutionSummary(st.resolution_summary)
+                            }}
+                            sx={{ textTransform: 'none', fontSize: '0.75rem', py: 0.25 }}
+                          >
+                            Use this resolution
+                          </Button>
+                        </Box>
+                      </Box>
+                    )
+                  })}
+                </Box>
+              </Paper>
+            )}
+
+            {/* SIMILAR RESOLVED TICKETS (LEGACY FALLBACK) */}
+            {(!workedFixes || workedFixes.length === 0) && ticketDetail.similar_tickets && ticketDetail.similar_tickets.length > 0 && (
               <Paper sx={{ p: 2, bgcolor: theme.palette.mode === 'light' ? '#FFFBEB' : '#2A1B14', border: '1px solid #FDE68A', borderRadius: 2, mb: 2.5 }}>
                 <Typography variant="caption" fontWeight={800} sx={{ color: '#B45309', display: 'block', mb: 1 }}>
                   SIMILAR RESOLVED INCIDENTS (HYBRID MATCH):

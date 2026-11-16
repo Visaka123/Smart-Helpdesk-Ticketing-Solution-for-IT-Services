@@ -212,6 +212,141 @@ REALISTIC_TICKETS = [
     },
 ]
 
+REALISTIC_RESOLVED_TICKETS = [
+    {
+        "title": "VPN error 809 remote connection could not be established",
+        "desc": "Remote employee unable to connect to corporate L2TP/IPsec VPN from home router. Receiving Windows error 809 stating network gateway did not respond.",
+        "category": "Network",
+        "priority": "High",
+        "team": "Network Operations",
+        "requester": "Rachel Green",
+        "dept": "Marketing",
+        "root_cause": "Network",
+        "summary": "Configured Windows registry key AssumeUDPEncapsulationContextOnSendRule under HKLM\\SYSTEM\\CurrentControlSet\\Services\\PolicyAgent to value 2 to support NAT-T traversal behind consumer routers. Verified UDP ports 500 and 4500 firewall traversal on corporate edge gateway. Remote client successfully established stable VPN tunnel.",
+    },
+    {
+        "title": "Outlook mailbox full error 0x8004060C cannot send or receive email",
+        "desc": "Employee reports Microsoft Outlook warning that Exchange mailbox quota exceeded 50GB, preventing inbound and outbound messages.",
+        "category": "Email",
+        "priority": "Medium",
+        "team": "IT Support",
+        "requester": "Ross Geller",
+        "dept": "Research",
+        "root_cause": "Software",
+        "summary": "Executed Exchange Online retention policy to automatically move emails older than 12 months to Online In-Place Archive. Emptied Deleted Items and Recoverable Items folders, freeing 14 GB of primary storage. Upgraded user mailbox license from Exchange Online Plan 1 to Plan 2 to double maximum quota.",
+    },
+    {
+        "title": "Excel crashes opening large 150MB financial report file",
+        "desc": "Microsoft Excel application stops responding and force closes when opening large XLSX financial forecasting workbook containing external data queries.",
+        "category": "Software",
+        "priority": "High",
+        "team": "IT Support",
+        "requester": "Monica Geller",
+        "dept": "Finance",
+        "root_cause": "Software",
+        "summary": "Disabled problematic third-party COM add-ins and cleared cached pivot table schemas in Excel Trust Center. Updated 32-bit Office installation to 64-bit Microsoft 365 Enterprise build to eliminate 2GB virtual memory address space exhaustion. Workbook now opens smoothly and calculates data model within 10 seconds.",
+    },
+    {
+        "title": "Domain account locked out after multiple failed logon attempts",
+        "desc": "User locked out of Windows Active Directory workstation and corporate single sign-on portal after password change.",
+        "category": "Access",
+        "priority": "Medium",
+        "team": "IT Support",
+        "requester": "Chandler Bing",
+        "dept": "Procurement",
+        "root_cause": "User Error",
+        "summary": "Unlocked user account in Active Directory Domain Controller and flushed stale Kerberos ticket cache on client machine using klist purge. Identified cached expired credentials in Windows Credential Manager from mapped network drives causing automatic lockout loops. Cleared credential entries and confirmed user logged in successfully with MFA.",
+    },
+    {
+        "title": "Floor 3 HP LaserJet printer recurring paper jam error in Tray 2",
+        "desc": "HP Enterprise LaserJet printer in 3rd floor copy room repeatedly halts with error 13.00.00 paper jam inside pickup roller area.",
+        "category": "Hardware",
+        "priority": "Low",
+        "team": "IT Support",
+        "requester": "Joey Tribbiani",
+        "dept": "Sales",
+        "root_cause": "Hardware",
+        "summary": "Inspected internal paper feed path and extracted a torn sheet fragment caught in the duplexing registration assembly. Cleaned optical paper feed sensors and replaced worn pickup and feed separation rollers on Tray 2 with OEM maintenance kit. Ran 50-page duplex test print job without paper feed failures.",
+    },
+    {
+        "title": "File server shares unreachable from Chicago branch office",
+        "desc": "Chicago branch office staff cannot reach corporate file server shares on 10.20.4.15 over the IPsec VPN tunnel; SMB timeout error 0x80070035.",
+        "category": "Network",
+        "priority": "High",
+        "team": "Network Operations",
+        "requester": "Phoebe Buffay",
+        "dept": "Operations",
+        "root_cause": "Network",
+        "summary": "Diagnosed asymmetric routing caused by dropped BGP route advertisement on the Chicago branch Cisco router. Re-established IPsec phase 2 security association and restored static failover route for the 10.20.0.0/16 subnet. Verified bidirectional ping latency and confirmed SMB file shares mounted successfully for branch users.",
+    },
+    {
+        "title": "Corporate 802.1X Wi-Fi network connection refused invalid certificate",
+        "desc": "Laptops fail to connect to Secure-Corp Wi-Fi SSID with authentication error indicating the RADIUS server certificate has expired.",
+        "category": "Network",
+        "priority": "High",
+        "team": "Network Operations",
+        "requester": "Gunther Central",
+        "dept": "Facilities",
+        "root_cause": "Network",
+        "summary": "Renewed the enterprise Wi-Fi root CA certificate on the FreeRADIUS cluster and bound the new TLS cert to EAP-PEAP profiles. Pushed the updated trusted root certificate authority profile to all managed workstations via Microsoft Intune MDM. Verified endpoint Wi-Fi handshake and authenticated 120 client devices.",
+    },
+    {
+        "title": "Docker socket permission denied error connect to docker daemon",
+        "desc": "Software engineer encounters 'Got permission denied while trying to connect to the Docker daemon socket at unix:///var/run/docker.sock' on Linux workstation.",
+        "category": "Application/Backend",
+        "priority": "Medium",
+        "team": "DevOps",
+        "requester": "Mike Hannigan",
+        "dept": "Engineering",
+        "root_cause": "Permission",
+        "summary": "Added the developer user account to the system docker group via usermod -aG docker and applied socket ACL permissions. Restarted docker.socket systemd service unit and instructed user to execute newgrp docker or log out to reload group memberships. Verified non-root execution of docker ps and container builds.",
+    },
+    {
+        "title": "Zoom meeting audio device missing cannot detect microphone or speaker",
+        "desc": "Zoom client displays error 'No audio device detected' during video conferences; internal Realtek microphone and headset output are unresponsive.",
+        "category": "Software",
+        "priority": "Medium",
+        "team": "IT Support",
+        "requester": "Janice Hosenstein",
+        "dept": "Human Resources",
+        "root_cause": "Software",
+        "summary": "Re-enabled microphone hardware access permissions under Windows Privacy & Security settings for desktop applications. Reinstalled the latest OEM Realtek High Definition Audio driver and restarted the Windows Audio service. Tested Zoom audio loopback test call, confirming crisp microphone capture and audio playback.",
+    },
+    {
+        "title": "IntelliJ IDEA Ultimate license ticket expired cannot activate",
+        "desc": "Backend developer unable to launch IntelliJ IDEA Ultimate; IDE prompts for license activation key stating subscription expired.",
+        "category": "Software",
+        "priority": "Medium",
+        "team": "IT Support",
+        "requester": "David Scientist",
+        "dept": "Engineering",
+        "root_cause": "License",
+        "summary": "Configured IntelliJ License Activation settings to point to corporate JetBrains Floating License Server at license.corp.internal:8080. Allocated an active JetBrains All Products Pack enterprise seat to user email in JetBrains Organization Admin Portal. IDE activated successfully with permanent corporate floating ticket.",
+    },
+    {
+        "title": "SAP GUI connection timeout error 10060 connecting to ERP production",
+        "desc": "Finance users experiencing WSAETIMEDOUT error 10060 when opening SAP GUI logon pad connecting to PRD SAP instance.",
+        "category": "Application/Backend",
+        "priority": "Critical",
+        "team": "SAP / ERP Team",
+        "requester": "Richard Burke",
+        "dept": "Finance",
+        "root_cause": "Application",
+        "summary": "Cleared corrupted saplogon.ini cache and updated SAP GUI dispatcher port 3200 gateway rule in the corporate firewall. Re-synchronized user application server router strings in SAP Logon Pad to secondary application server instance PRD-APP-02. Verified standard SU53 transaction execution and financial report extraction without timeouts.",
+    },
+    {
+        "title": "SSL certificate warning NET::ERR_CERT_DATE_INVALID on internal portal",
+        "desc": "Web browsers displaying SSL certificate expired security warning when navigating to internal employee self-service portal.",
+        "category": "Security",
+        "priority": "High",
+        "team": "Security",
+        "requester": "Emma Geller",
+        "dept": "Legal",
+        "root_cause": "Security",
+        "summary": "Issued a renewed 2-year wildcard TLS certificate from corporate DigiCert CA and deployed it to the IIS reverse proxy server on port 443. Replaced expired certificate bindings in IIS Manager and verified complete TLS certificate chain using OpenSSL s_client. Confirmed internal portal loads with green padlock and zero security warnings.",
+    },
+]
+
 
 def seed_reset():
     """Removes only records flagged with is_demo=True."""
@@ -426,6 +561,43 @@ def seed_load():
                 is_demo=True,
             ))
 
+        db.commit()
+
+        # 7. Add 12 realistic resolved tickets with concrete resolution notes
+        resolved_titles = [r["title"] for r in REALISTIC_RESOLVED_TICKETS]
+        db.query(Ticket).filter(Ticket.title.in_(resolved_titles)).delete(synchronize_session=False)
+        db.commit()
+
+        sarah_user = db.query(User).filter(User.name.like("%Sarah%")).first()
+        meena_user = db.query(User).filter(User.name.like("%Meena%")).first()
+
+        for idx, r_spec in enumerate(REALISTIC_RESOLVED_TICKETS):
+            is_net = "Network" in r_spec["team"]
+            agent_id = meena_user.id if (is_net and meena_user) else (sarah_user.id if sarah_user else None)
+            agent_name = "Meena" if (is_net and meena_user) else (sarah_user.name if sarah_user else "Sarah Agent")
+
+            res_ticket = Ticket(
+                title=r_spec["title"],
+                description=r_spec["desc"],
+                category=r_spec["category"],
+                priority=r_spec["priority"],
+                status="resolved",
+                assigned_team=r_spec["team"],
+                assigned_agent_id=agent_id,
+                assigned_agent_name=agent_name,
+                routing_confidence=0.99,
+                root_cause=r_spec["root_cause"],
+                resolution_summary=r_spec["summary"],
+                resolution_notes=r_spec["summary"],
+                resolution_detail=r_spec["summary"],
+                requester_name=r_spec["requester"],
+                requester_department=r_spec["dept"],
+                created_at=now_utc - timedelta(days=4, hours=idx),
+                resolved_at=now_utc - timedelta(days=2, hours=idx),
+                sla_due_at=now_utc - timedelta(days=3),
+                is_demo=False,
+            )
+            db.add(res_ticket)
         db.commit()
 
         # Terminal output

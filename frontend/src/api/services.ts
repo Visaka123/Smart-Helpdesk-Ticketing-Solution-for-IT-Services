@@ -12,6 +12,9 @@ import type {
   OnCallEntry,
   PublicHoliday,
   SyncStatus,
+  SuggestedFix,
+  SuggestionFeedbackPayload,
+  DeflectionAnalytics,
 } from '../types'
 
 export const authApi = {
@@ -31,6 +34,15 @@ export const ticketApi = {
 export const chatbotApi = {
   ask: (message: string) =>
     apiClient.post<ChatbotResponse>('/chatbot/ask', { message }),
+}
+
+export const fixesApi = {
+  suggestFixes: (title: string, description: string, category?: string) =>
+    apiClient.post<SuggestedFix[]>('/ticket/suggest-fixes', { title, description, category }),
+  recordFeedback: (payload: SuggestionFeedbackPayload) =>
+    apiClient.post('/ticket/suggest-fixes/feedback', payload),
+  getDeflectionAnalytics: () =>
+    apiClient.get<DeflectionAnalytics>('/analytics/deflection'),
 }
 
 export const availabilityApi = {

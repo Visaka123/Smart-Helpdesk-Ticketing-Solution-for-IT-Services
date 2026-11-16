@@ -109,9 +109,20 @@ app.add_middleware(
 
 app.include_router(auth_router,         prefix="/auth",         tags=["Auth"])
 app.include_router(ticket_router,        prefix="/ticket",        tags=["Ticket"])
+app.include_router(ticket_router,        prefix="/tickets",       tags=["Tickets"])
 app.include_router(chatbot_router,       prefix="/chatbot",       tags=["Chatbot"])
 app.include_router(agent_router,         prefix="/agent",         tags=["Agent / Support"])
 app.include_router(availability_router,  prefix="/availability",  tags=["Availability"])
+
+@app.get("/analytics/deflection", tags=["Analytics"])
+def get_deflection_stats():
+    from app.suggestions.service import get_deflection_analytics
+    from app.database.database import SessionLocal
+    db = SessionLocal()
+    try:
+        return get_deflection_analytics(db=db)
+    finally:
+        db.close()
 
 @app.get("/docs/download/{filename}")
 def download_sop_document(filename: str):

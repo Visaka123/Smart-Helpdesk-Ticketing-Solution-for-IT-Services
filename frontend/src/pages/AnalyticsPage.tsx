@@ -1,5 +1,5 @@
-import { useEffect } from 'react'
-import { Grid, Card, CardContent, Typography, Box, CircularProgress } from '@mui/material'
+import { useEffect, useState } from 'react'
+import { Grid, Card, CardContent, Typography, Box, CircularProgress, Chip, Paper } from '@mui/material'
 import {
   Chart as ChartJS, ArcElement, Tooltip, Legend,
   CategoryScale, LinearScale, BarElement, LineElement, PointElement, Title, Filler,
@@ -13,6 +13,8 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp'
 import GroupsIcon from '@mui/icons-material/Groups'
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
 import SmartToyIcon from '@mui/icons-material/SmartToy'
+import { fixesApi } from '../api/services'
+import type { DeflectionAnalytics } from '../types'
 
 ChartJS.register(
   ArcElement, Tooltip, Legend,
@@ -39,10 +41,14 @@ const barOptions = {
 export default function AnalyticsPage() {
   const dispatch = useAppDispatch()
   const { stats, tickets, loading } = useAppSelector((s) => s.tickets)
+  const [deflection, setDeflection] = useState<DeflectionAnalytics | null>(null)
 
   useEffect(() => {
     dispatch(fetchStats())
     dispatch(fetchTickets())
+    fixesApi.getDeflectionAnalytics()
+      .then((res) => setDeflection(res.data))
+      .catch((err) => console.warn('Could not load deflection analytics:', err))
   }, [])
 
   if (loading && !stats) {
@@ -138,6 +144,74 @@ export default function AnalyticsPage() {
           <StatCard title="Active Teams" value={Object.keys(stats?.tickets_by_team || {}).length} icon={GroupsIcon} color="#0284C7" subtitle="Handling tickets" />
         </Grid>
       </Grid>
+
+      {/* SELF-SERVICE DEFLECTION CARD */}
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+            <Box>
+              <Typography variant="h5" fontWeight={700}>Self-service deflection rate</Typography>
+              <Typography variant="caption" color="text.secondary">
+                Resolved tickets recommended directly to users before ticket creation
+              </Typography>
+            </Box>
+            <Chip
+              label={`${Math.round((deflection?.deflection_rate || 0) * 100)}% Deflection`}
+              sx={{ fontWeight: 800, bgcolor: '#DCFCE7', color: '#15803D' }}
+            />
+          </Box>
+
+          <Grid container spacing={2} mb={2}>
+            <Grid item xs={12} sm={4}>
+              <Paper variant="outlined" sx={{ p: 2, textAlign: 'center', bgcolor: 'background.default' }}>
+                <Typography variant="caption" color="text.secondary">Suggestions Shown</Typography>
+                <Typography variant="h4" fontWeight={800} color="text.primary">{deflection?.suggestions_shown || 0}</Typography>
+              </Paper>
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <Paper variant="outlined" sx={{ p: 2, textAlign: 'center', bgcolor: 'background.default' }}>
+                <Typography variant="caption" color="text.secondary">Solved via Suggestion</Typography>
+                <Typography variant="h4" fontWeight={800} sx={{ color: '#16A34A' }}>{deflection?.solved_count || 0}</Typography>
+              </Paper>
+            </Grid>
+            <Grid item xs={12} sm={4}>
+              <Paper variant="outlined" sx={{ p: 2, textAlign: 'center', bgcolor: 'background.default' }}>
+                <Typography variant="caption" color="text.secondary">Deflection Ratio</Typography>
+                <Typography variant="h4" fontWeight={800} sx={{ color: '#2563EB' }}>
+                  {deflection && deflection.suggestions_shown > 0
+                    ? `${Math.round(deflection.deflection_rate * 100)}%`
+                    : '0%'}
+                </Typography>
+              </Paper>
+            </Grid>
+          </Grid>
+
+          <Typography variant="subtitle2" fontWeight={700} mb={1}>
+            Top Helpful Resolved Tickets
+          </Typography>
+          {deflection?.top_helpful_tickets && deflection.top_helpful_tickets.length > 0 ? (
+            <Box display="flex" flexDirection="column" gap={1}>
+              {deflection.top_helpful_tickets.map((t) => (
+                <Paper key={t.ticket_id} variant="outlined" sx={{ p: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Box>
+                    <Typography variant="body2" fontWeight={700}>
+                      #{t.ticket_id} — {t.title}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {t.category || 'General IT'} {t.resolution_summary ? `· Fix: ${t.resolution_summary.slice(0, 90)}...` : ''}
+                    </Typography>
+                  </Box>
+                  <Chip label={`${t.solved_count} solved`} size="small" sx={{ fontWeight: 700, bgcolor: '#EFF6FF', color: '#2563EB' }} />
+                </Paper>
+              ))}
+            </Box>
+          ) : (
+            <Typography variant="caption" color="text.secondary">
+              No deflections recorded yet. Solved tickets will appear here as employees use suggestions.
+            </Typography>
+          )}
+        </CardContent>
+      </Card>
 
       <Grid container spacing={2} mb={2}>
         <Grid item xs={12} md={8}>
