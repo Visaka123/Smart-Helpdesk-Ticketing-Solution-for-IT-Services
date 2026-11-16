@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import pickle
 import joblib
@@ -9,6 +10,7 @@ MODELS_DIR = "model_assets/models"
 ROUTER_PATH = os.path.join(MODELS_DIR, "router.pkl")
 LABEL_ENCODER_PATH = os.path.join(MODELS_DIR, "label_encoder.pkl")
 BUNDLE_PATH = os.path.join(MODELS_DIR, "tfidf_lgbm_bundle.joblib")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
 
 _router_cache = None
 _label_encoder_cache = None
@@ -45,17 +47,29 @@ def get_category_bundle():
     return _category_bundle_cache
 
 CATEGORY_TEAM_MAP = {
-    "Hardware": "Desktop Support",
-    "Access": "Identity & Access Management",
+    "Network": "Network Operations",
+    "Hardware": "IT Support",
+    "Software": "IT Support",
+    "Software/Desktop Application": "IT Support",
+    "Access": "IT Support",
+    "Access/Accounts": "IT Support",
+    "Email": "IT Support",
+    "Security": "Security Team",
+    "Application/Backend": "IT Support",
+    "Printer/Peripheral": "IT Support",
+    "Internal Project": "IT Support",
     "Administrative rights": "IT Admin",
     "HR Support": "HR Operations",
-    "Internal Project": "Application Support",
     "Storage": "Infrastructure Support",
     "Purchase": "Procurement",
     "Miscellaneous": "General Support",
 }
 
 ALLOWED_TEAMS = [
+    "IT Support",
+    "Network Operations",
+    "Network Team",
+    "Security Team",
     "Application Support",
     "Database Operations",
     "DevOps & Cloud Infra",
@@ -121,7 +135,7 @@ Description: {description}"""
             try:
                 client = Groq(api_key=key)
                 response = client.chat.completions.create(
-                    model="llama-3.1-8b-instant",
+                    model=GROQ_MODEL,
                     messages=[
                         {"role": "system", "content": sys_prompt},
                         {"role": "user", "content": usr_prompt}
@@ -147,42 +161,183 @@ Description: {description}"""
         print(f"[LLM ROUTER ERROR] Exception in route_team_with_llm: {e}")
 
 ALLOWED_CATEGORIES = [
-    "Access",
-    "Administrative rights",
-    "HR Support",
+    "Network",
     "Hardware",
+    "Software",
+    "Software/Desktop Application",
+    "Access",
+    "Access/Accounts",
+    "Email",
+    "Security",
+    "Application/Backend",
+    "Printer/Peripheral",
     "Internal Project",
-    "Miscellaneous",
+    "HR Support",
     "Purchase",
     "Storage",
+    "Administrative rights",
+    "Miscellaneous",
 ]
 
 ALLOWED_PRIORITIES = ["Critical", "High", "Medium", "Low"]
 ALLOWED_SLA_TARGETS = ["4 hours", "24 hours", "48 hours", "72 hours"]
 
+def rule_based_classify(title: str, description: str) -> dict:
+    """
+    High-precision deterministic rule-based classifier matching keywords for IT support domains.
+    Handles Software, Network, Access, Security, Application/Backend, Printer, and Hardware.
+    """
+    text = f"{title} {description}".lower()
+
+    def has_word(patterns, s=text):
+        for p in patterns:
+            # Escape regex special chars while keeping word boundary
+            escaped = re.escape(p)
+            if re.search(r'(?:\b|\A)' + escaped + r'(?:\b|\Z)', s, re.IGNORECASE):
+                return True
+        return False
+
+    # 1. Application/Backend (503 gateway, service unavailable, backend outage, deadlocks)
+    if has_word(["503", "502", "504", "production gateway", "gateway timeout", "service unavailable", "database deadlock", "deadlock"]) or (
+        has_word(["microservice", "backend"]) and has_word(["error", "timeout", "fail", "down", "outage", "deadlock"])
+    ):
+        is_crit = has_word(["production", "outage", "down", "critical", "503", "gateway 503"])
+        prio = "Critical" if is_crit else "High"
+        sla = "4 hours" if prio == "Critical" else "24 hours"
+        return {
+            "category": "Application/Backend",
+            "assigned_team": "IT Support",
+            "priority": prio,
+            "sla_target": sla,
+            "category_confidence": 0.99,
+        }
+
+    # 2. Security (phishing, suspicious email, malware, ransomware, breach)
+    if has_word(["phishing", "suspicious email", "malware", "virus", "ransomware", "trojan", "unauthorized access", "data breach", "compromised"]):
+        return {
+            "category": "Security",
+            "assigned_team": "Security Team",
+            "priority": "High",
+            "sla_target": "24 hours",
+            "category_confidence": 0.99,
+        }
+
+    # 3. Access / Accounts (passwords, locked, access denied, MFA, SSO, role access, grant access, need access)
+    if has_word([
+        "password", "locked", "lockout", "access denied", "mfa reset", "mfa", "2fa",
+        "sso login", "sso", "permission denied", "unlock account", "account locked",
+        "access request", "request access", "need access", "grant access", "role access",
+        "user permissions", "access rights", "module access", "erp access", "portal access"
+    ]) or (
+        has_word(["access"]) and has_word(["role", "module", "permission", "permissions", "rights", "grant", "erp", "account", "login", "purchase module"])
+    ):
+        return {
+            "category": "Access",
+            "assigned_team": "IT Support",
+            "priority": "Medium",
+            "sla_target": "48 hours",
+            "category_confidence": 0.99,
+        }
+
+    # 4. Network (file server, VPN, Wi-Fi, switch, firewall, router, subnet, lan, wan, dns)
+    if has_word(["file server", "vpn", "wi-fi", "wifi", "switch port", "switch", "firewall", "router", "subnet", "lan", "wan", "mpls", "bgp", "network latency", "packet loss", "ethernet"]) or (
+        has_word(["unreachable", "disconnected"]) and has_word(["server", "host", "switch", "port", "network", "nas", "share", "circuit"])
+    ):
+        is_high = has_word(["urgent", "unreachable", "down", "disconnected", "spike", "outage"])
+        prio = "High" if is_high else "Medium"
+        sla = "24 hours" if prio == "High" else "48 hours"
+        return {
+            "category": "Network",
+            "assigned_team": "Network Operations",
+            "priority": prio,
+            "sla_target": sla,
+            "category_confidence": 0.99,
+        }
+
+    # 5. Software / Desktop Application (Excel, Outlook, install, license, crash, Office 365)
+    if has_word([
+        "excel", "outlook", "powerpoint", "office 365", "ms office", "ms word",
+        "install", "installation", "license", "licensing", "crash", "crashes", "crashing",
+        "freeze", "freezes", "intellij", "vscode", "desktop application"
+    ]):
+        return {
+            "category": "Software",
+            "assigned_team": "IT Support",
+            "priority": "Medium",
+            "sla_target": "48 hours",
+            "category_confidence": 0.99,
+        }
+
+    # 6. Printer / Peripheral
+    if has_word(["printer", "printing", "toner", "paper jam", "scanner", "peripheral"]):
+        return {
+            "category": "Printer/Peripheral",
+            "assigned_team": "IT Support",
+            "priority": "Low",
+            "sla_target": "72 hours",
+            "category_confidence": 0.98,
+        }
+
+    # 7. Email issues (non-phishing)
+    if has_word(["email bounce", "mailbox full", "exchange server", "smtp", "imap", "cannot send email"]):
+        return {
+            "category": "Email",
+            "assigned_team": "IT Support",
+            "priority": "Medium",
+            "sla_target": "48 hours",
+            "category_confidence": 0.98,
+        }
+
+    # 8. Physical Hardware
+    if has_word(["laptop", "monitor", "screen", "keyboard", "mouse", "docking station", "charger", "cable", "ram upgrade"]):
+        return {
+            "category": "Hardware",
+            "assigned_team": "IT Support",
+            "priority": "Medium",
+            "sla_target": "48 hours",
+            "category_confidence": 0.98,
+        }
+
+    # 9. Real Internal Project
+    if has_word(["internal project", "code repo", "dev branch", "refactoring task", "architecture review", "sprint task"]):
+        return {
+            "category": "Internal Project",
+            "assigned_team": "IT Support",
+            "priority": "Medium",
+            "sla_target": "48 hours",
+            "category_confidence": 0.95,
+        }
+
+    return None
+
 def classify_and_route_ticket(title: str, description: str) -> dict:
     """
-    Single-pass LLM classifier using Groq client ('llama-3.1-8b-instant').
+    Single-pass classifier using deterministic keyword rules first,
+    falling back to Groq LLM ('llama-3.1-8b-instant').
     Dynamically predicts Category, Assigned Team, Priority, and SLA Target using semantic reasoning.
-    Falls back safely on error.
     """
+    rule_res = rule_based_classify(title, description)
+    if rule_res:
+        print(f"[RULE CLASSIFIER MATCH] '{title}' -> Category: {rule_res['category']}, Team: {rule_res['assigned_team']}, Priority: {rule_res['priority']}")
+        return rule_res
+
+    # Fallback default if LLM is unavailable
     t_lower = f"{title} {description}".lower()
-    if any(k in t_lower for k in ["network", "vpn", "wifi", "router", "switch", "firewall", "dns", "subnet", "lan", "wan", "internet"]):
-        fallback_res = {
-            "category": "Access",
-            "assigned_team": "Network Team",
-            "priority": "Medium",
-            "sla_target": "48 hours",
-            "category_confidence": 0.95
-        }
-    else:
-        fallback_res = {
-            "category": "Internal Project",
-            "assigned_team": "Application Support",
-            "priority": "Medium",
-            "sla_target": "48 hours",
-            "category_confidence": 0.95
-        }
+    fallback_category = "Miscellaneous"
+    if any(re.search(r'(?:\b|\A)' + re.escape(w) + r'(?:\b|\Z)', t_lower) for w in ["access", "password", "permission", "role", "login"]):
+        fallback_category = "Access"
+    elif any(re.search(r'(?:\b|\A)' + re.escape(w) + r'(?:\b|\Z)', t_lower) for w in ["excel", "outlook", "software", "license", "install", "crash"]):
+        fallback_category = "Software"
+    elif any(re.search(r'(?:\b|\A)' + re.escape(w) + r'(?:\b|\Z)', t_lower) for w in ["network", "vpn", "wifi", "switch", "router", "file server"]):
+        fallback_category = "Network"
+
+    fallback_res = {
+        "category": fallback_category,
+        "assigned_team": CATEGORY_TEAM_MAP.get(fallback_category, "IT Support"),
+        "priority": "Medium",
+        "sla_target": "48 hours",
+        "category_confidence": 0.85
+    }
 
     try:
         from ai.rag.groq_client import get_groq_api_keys, Groq
@@ -196,34 +351,33 @@ def classify_and_route_ticket(title: str, description: str) -> dict:
 
 You MUST strictly follow these rules:
 
-1. Category (Select strictly ONE from the 8 allowed categories):
-- "Access": IAM, SSO, MFA, VPN, passwords, user permissions.
-- "Administrative rights": Elevated privileges, sudo access, admin roles.
-- "HR Support": Leaves, payroll, benefits, policy inquiries.
+1. Category (Select strictly ONE from the allowed categories):
+- "Network": VPN, Wi-Fi, switches, routers, firewalls, DNS, file server connectivity, subnets, packet loss.
+- "Software": Desktop apps (Excel, Outlook, Office), software installation, licenses, app crashes/freezes.
+- "Access": Passwords, account lockout, access denied, MFA resets, SSO login permissions.
+- "Security": Phishing, malware, suspicious emails, security alerts, ransomware.
+- "Application/Backend": 503 gateway errors, backend microservices, API failures, database deadlocks, service outages.
 - "Hardware": STRICTLY physical device failures (monitors, keyboards, docks, laptops, chargers, cables).
-- "Internal Project": Software development, internal tools, microservices, gRPC, APIs, application updates, bugs, database issues.
-- "Miscellaneous": General queries not fitting other categories.
+- "Printer/Peripheral": Printers, scanners, toner, paper jams, print queues.
+- "Email": Mailbox full, bounce messages, email delivery failures (non-security).
+- "Internal Project": Software development repositories, internal developer tooling, CI/CD pipelines.
+- "HR Support": Leaves, payroll, benefits, policy inquiries.
 - "Purchase": Procurement requests, new software/hardware purchase orders.
 - "Storage": Disk quotas, cloud buckets (S3), network shares, backup space.
+- "Miscellaneous": General inquiries not fitting any other category.
 
-2. Assigned Team (Select strictly ONE from the allowed support teams):
-- "Application Support" (Internal app bugs, microservices, gRPC timeouts, API errors, frontend crashes, application updates, internal tools)
-- "Database Operations" (PostgreSQL/MySQL deadlocks, replication lag, slow queries)
-- "DevOps & Cloud Infra" (Docker/K8s pod issues, CI/CD pipeline failures, cloud storage limits)
-- "Network & Security" (VPN connectivity, firewall rules, SSL certs, gateway timeouts)
-- "SAP / ERP Team" (SAP module sync errors, invoice integration failures, ERP ledger mismatches)
-- "Identity & Access Management" (SSO login, MFA resets, role-based access permissions)
-- "IT Admin" (Sudo rights, elevated local server access)
-- "Desktop Support" (Workstation hardware, physical monitor failures)
-- "Procurement" (Software license purchases, hardware orders)
-- "HR Operations" (Payroll queries, PTO balance disputes)
-- "General Support" (Office amenities, general/ambiguous requests)
+2. Assigned Team (Select strictly ONE):
+- "Network Operations" (Network and connectivity issues)
+- "IT Support" (General IT, software, desktop apps, hardware, access)
+- "Security Team" (Security and phishing incidents)
+- "Database Operations" (PostgreSQL/MySQL deadlocks, queries)
+- "DevOps & Cloud Infra" (CI/CD pipeline failures, Docker/K8s)
 
 3. Priority & SLA Target (Select strictly ONE matching pair):
-- "Critical" -> "4 hours" (Production outages, payment/checkout failures, widespread blockers)
-- "High" -> "24 hours" (Service timeouts, gRPC connection timeouts, update failures, build/staging blocks, replica lag)
-- "Medium" -> "48 hours" (Non-blocking single-user issues, quota warnings)
-- "Low" -> "72 hours" (General inquiries, non-urgent procurement)
+- "Critical" -> "4 hours" (Production outages, 503 gateway errors, payment blockers)
+- "High" -> "24 hours" (Service degradation, security phishing, VPN branch blockers)
+- "Medium" -> "48 hours" (Single user software crashes, license requests, password resets)
+- "Low" -> "72 hours" (General inquiries, non-urgent peripheral issues)
 
 You MUST respond strictly in valid JSON format with this exact schema:
 {
@@ -239,7 +393,7 @@ You MUST respond strictly in valid JSON format with this exact schema:
             try:
                 client = Groq(api_key=key)
                 response = client.chat.completions.create(
-                    model="llama-3.1-8b-instant",
+                    model=GROQ_MODEL,
                     messages=[
                         {"role": "system", "content": sys_prompt},
                         {"role": "user", "content": usr_prompt}
@@ -257,9 +411,9 @@ You MUST respond strictly in valid JSON format with this exact schema:
                         sla = parsed.get("sla_target")
 
                         if cat not in ALLOWED_CATEGORIES:
-                            cat = "Internal Project"
+                            cat = "Software" if any(k in t_lower for k in ["install", "crash", "excel", "license"]) else "Miscellaneous"
                         if team not in ALLOWED_TEAMS:
-                            team = "Application Support"
+                            team = CATEGORY_TEAM_MAP.get(cat, "IT Support")
                         if prio not in ALLOWED_PRIORITIES:
                             prio = "Medium"
                         if sla not in ALLOWED_SLA_TARGETS:
@@ -288,8 +442,8 @@ def post_process_category(predicted_category: str, text: str) -> dict:
     """
     Post-process category prediction and determine team routing.
     If the raw predicted category is 'Hardware', software keywords are present, and physical hardware keywords are absent:
-      - Override category to 'Internal Project'
-      - Assign team to 'Application Support'
+      - Override category to 'Software'
+      - Assign team to 'IT Support'
     Otherwise, map assigned team using CATEGORY_TEAM_MAP.
     """
     text_lower = str(text).lower()
@@ -301,10 +455,10 @@ def post_process_category(predicted_category: str, text: str) -> dict:
     is_overridden = False
 
     if predicted_category == "Hardware" and has_software_kw and not has_hardware_kw:
-        final_category = "Internal Project"
+        final_category = "Software"
         is_overridden = True
 
-    assigned_team = CATEGORY_TEAM_MAP.get(final_category, "General Support")
+    assigned_team = CATEGORY_TEAM_MAP.get(final_category, "IT Support")
 
     return {
         "final_category": final_category,

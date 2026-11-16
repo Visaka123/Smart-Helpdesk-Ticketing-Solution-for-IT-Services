@@ -22,6 +22,7 @@ export interface Ticket {
   assigned_team?: string
   predicted_team?: string
   assigned_agent_name?: string
+  assignment_reason?: string
   predicted_priority?: string
   sla_hours?: number
   sla_badge?: string

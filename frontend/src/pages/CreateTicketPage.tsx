@@ -19,6 +19,8 @@ import {
   Stack,
   Checkbox,
   FormControlLabel,
+  Snackbar,
+  IconButton,
 } from '@mui/material'
 import SendIcon from '@mui/icons-material/Send'
 import CancelIcon from '@mui/icons-material/Cancel'
@@ -26,6 +28,7 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
 import LockIcon from '@mui/icons-material/Lock'
 import GroupIcon from '@mui/icons-material/Group'
 import AccessTimeIcon from '@mui/icons-material/AccessTime'
+import CloseIcon from '@mui/icons-material/Close'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 
@@ -43,7 +46,12 @@ export default function CreateTicketPage() {
   // Interstitial Modal State
   const [interstitialOpen, setInterstitialOpen] = useState(false)
   const [interstitialMatch, setInterstitialMatch] = useState<any>(null)
-  const [interstitialType, setInterstitialType] = useState<'open' | 'resolved' | null>(null)
+  const [interstitialType, setInterstitialType] = useState<'open' | 'in_progress' | 'resolved' | null>(null)
+  const [inlineMatch, setInlineMatch] = useState<any>(null)
+
+  // Toast Notification State
+  const [toastOpen, setToastOpen] = useState(false)
+  const [toastMessage, setToastMessage] = useState('')
 
   // Hard Block Modal State
   const [blockDialogOpen, setBlockDialogOpen] = useState(false)
@@ -52,6 +60,66 @@ export default function CreateTicketPage() {
   // Ticket Created Confirmation Modal
   const [successDialogOpen, setSuccessDialogOpen] = useState(false)
   const [createdTicket, setCreatedTicket] = useState<any>(null)
+
+  const handleFollowTicket = async () => {
+    if (!interstitialMatch) return
+    const ticketId = interstitialMatch.ticket_id
+    try {
+      const token = localStorage.getItem('token')
+      const headers: any = {}
+      if (token) headers['Authorization'] = `Bearer ${token}`
+
+      await axios.post(`${API_BASE}/ticket/${ticketId}/follow`, {
+        requester_name: requesterName,
+        requester_department: department,
+        similarity_score: interstitialMatch.relevance_score || interstitialMatch.semantic_score || 0.0,
+        new_ticket_text: `${title} ${description}`,
+      }, { headers })
+
+      setInterstitialOpen(false)
+      setToastMessage(`You will get updates on #${ticketId}`)
+      setToastOpen(true)
+    } catch (err) {
+      console.error('Error following ticket:', err)
+      setToastMessage(`You will get updates on #${ticketId}`)
+      setToastOpen(true)
+      setInterstitialOpen(false)
+    }
+  }
+
+  const handleSubmitMine = async () => {
+    if (interstitialMatch) {
+      try {
+        await axios.post(`${API_BASE}/ticket/log-duplicate-decision`, {
+          ticket_text: `${title} ${description}`,
+          matched_ticket_id: interstitialMatch.ticket_id,
+          similarity_score: interstitialMatch.relevance_score || interstitialMatch.semantic_score || 0.0,
+          decision: 'submitted_anyway',
+        })
+      } catch (e) {
+        console.warn('Telemetry log error:', e)
+      }
+    }
+    setInterstitialOpen(false)
+    await executeCreateTicket(true)
+  }
+
+  const handleDismissModal = async () => {
+    if (interstitialMatch) {
+      try {
+        await axios.post(`${API_BASE}/ticket/log-duplicate-decision`, {
+          ticket_text: `${title} ${description}`,
+          matched_ticket_id: interstitialMatch.ticket_id,
+          similarity_score: interstitialMatch.relevance_score || interstitialMatch.semantic_score || 0.0,
+          decision: 'dismissed',
+        })
+      } catch (e) {
+        console.warn('Telemetry log error:', e)
+      }
+    }
+    setInterstitialOpen(false)
+    // Preserves form data intact (title, description, etc. are untouched)
+  }
 
   const executeCreateTicket = async (forceSkipCheck = false) => {
     setSubmitting(true)
@@ -118,28 +186,32 @@ export default function CreateTicketPage() {
         } catch (e) {}
       }
 
-      // 1. Run Pre-Submission Duplicate Check using backend RAG similarity matcher
+      // 1. Run Pre-Submission Duplicate Check using backend similarity matcher
       const dupRes = await axios.post(`${API_BASE}/ticket/check-duplicate`, {
         title,
         description,
       }, { headers })
 
       const data = dupRes.data
-      if (data && data.has_duplicate && data.top_match) {
+      if (data && data.should_show_modal && data.top_match) {
         const match = data.top_match
-        if (data.has_resolved_match && (match.status === 'resolved' || match.status === 'closed')) {
-          setInterstitialMatch(match)
+        setInterstitialMatch(match)
+        if (match.status === 'resolved' || match.status === 'closed') {
           setInterstitialType('resolved')
-          setInterstitialOpen(true)
-          setSubmitting(false)
-          return
-        } else if (data.has_open_match) {
-          setInterstitialMatch(match)
+        } else if (match.status === 'in_progress') {
+          setInterstitialType('in_progress')
+        } else {
           setInterstitialType('open')
-          setInterstitialOpen(true)
-          setSubmitting(false)
-          return
         }
+        setInterstitialOpen(true)
+        setSubmitting(false)
+        return
+      }
+
+      if (data && data.should_show_inline_hint && (data.inline_match || data.top_match)) {
+        setInlineMatch(data.inline_match || data.top_match)
+      } else {
+        setInlineMatch(null)
       }
 
       // No match above threshold -> submit immediately
@@ -225,6 +297,12 @@ export default function CreateTicketPage() {
               placeholder="Please provide details about the issue, including error messages, steps to reproduce, or impacted systems..."
               variant="outlined"
             />
+
+            {inlineMatch && (
+              <Alert severity="info" sx={{ borderRadius: 2 }}>
+                Possibly related: #{inlineMatch.ticket_id} ({inlineMatch.title})
+              </Alert>
+            )}
 
             <Divider sx={{ my: 1 }} />
 
@@ -312,6 +390,25 @@ export default function CreateTicketPage() {
 
                 <Box display="flex" justifyContent="space-between" alignItems="center">
                   <Typography variant="body2" color="text.secondary" fontWeight={600}>
+                    Assigned Agent
+                  </Typography>
+                  <Typography variant="body2" fontWeight={800} color="text.primary">
+                    {createdTicket.assigned_agent_name ? `Assigned to ${createdTicket.assigned_agent_name}` : 'Unassigned / Queued'}
+                  </Typography>
+                </Box>
+
+                {createdTicket.assignment_reason && (
+                  <Box sx={{ mt: -0.5, p: 1.2, bgcolor: theme.palette.mode === 'light' ? '#EEF2F6' : '#1E293B', borderRadius: 1.5 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontStyle: 'italic', wordBreak: 'break-word' }}>
+                      {createdTicket.assignment_reason}
+                    </Typography>
+                  </Box>
+                )}
+
+                <Divider light />
+
+                <Box display="flex" justifyContent="space-between" alignItems="center">
+                  <Typography variant="body2" color="text.secondary" fontWeight={600}>
                     Priority
                   </Typography>
                   <Chip
@@ -365,28 +462,37 @@ export default function CreateTicketPage() {
       {interstitialMatch && (
         <Dialog
           open={interstitialOpen}
-          onClose={() => setInterstitialOpen(false)}
+          onClose={handleDismissModal}
           maxWidth="sm"
           fullWidth
           PaperProps={{ sx: { borderRadius: 3 } }}
         >
-          <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pb: 1 }}>
-            {interstitialType === 'resolved' ? (
-              <CheckCircleOutlineIcon sx={{ color: '#059669', fontSize: 28 }} />
-            ) : (
-              <GroupIcon sx={{ color: '#D97706', fontSize: 28 }} />
-            )}
-            <Box>
-              <Typography variant="h6" fontWeight={800} color="text.primary">
-                {interstitialType === 'resolved'
-                  ? 'Similar Resolved Issue Found'
-                  : 'Similar Open Incident In Progress'}
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Matched against existing Ticket #{interstitialMatch.ticket_id} (Relevance:{' '}
-                {Math.round((interstitialMatch.semantic_score || 0.85) * 100)}%)
-              </Typography>
+          <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1 }}>
+            <Box display="flex" alignItems="center" gap={1.5}>
+              {interstitialType === 'resolved' ? (
+                <CheckCircleOutlineIcon sx={{ color: '#059669', fontSize: 28 }} />
+              ) : interstitialType === 'in_progress' ? (
+                <GroupIcon sx={{ color: '#2563EB', fontSize: 28 }} />
+              ) : (
+                <AccessTimeIcon sx={{ color: '#D97706', fontSize: 28 }} />
+              )}
+              <Box>
+                <Typography variant="h6" fontWeight={800} color="text.primary">
+                  {interstitialType === 'resolved'
+                    ? 'A similar issue was recently resolved'
+                    : interstitialType === 'in_progress'
+                    ? 'Already reported and being worked on'
+                    : 'Already reported, waiting for an agent'}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Matched against existing Ticket #{interstitialMatch.ticket_id} (Relevance:{' '}
+                  {Math.round((interstitialMatch.relevance_score || interstitialMatch.semantic_score || 0.75) * 100)}%)
+                </Typography>
+              </Box>
             </Box>
+            <IconButton onClick={handleDismissModal} size="small" sx={{ color: 'text.secondary' }}>
+              <CloseIcon fontSize="small" />
+            </IconButton>
           </DialogTitle>
 
           <DialogContent sx={{ py: 2 }}>
@@ -403,7 +509,7 @@ export default function CreateTicketPage() {
                 <Box display="flex" alignItems="center" gap={1} mb={1}>
                   <CheckCircleOutlineIcon sx={{ color: '#059669', fontSize: 20 }} />
                   <Typography variant="subtitle2" fontWeight={800} sx={{ color: '#065F46' }}>
-                    Official Verified Solution — Ticket #{interstitialMatch.ticket_id}
+                    Verified Resolution for Ticket #{interstitialMatch.ticket_id}
                   </Typography>
                 </Box>
                 <Typography variant="body2" fontWeight={700} sx={{ color: '#047857', mb: 1 }}>
@@ -422,6 +528,51 @@ export default function CreateTicketPage() {
                   </Typography>
                 )}
               </Paper>
+            ) : interstitialType === 'in_progress' ? (
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: 2.5,
+                  bgcolor: theme.palette.mode === 'light' ? '#EFF6FF' : '#1E293B',
+                  borderColor: '#BFDBFE',
+                  borderRadius: 2.5,
+                }}
+              >
+                <Box display="flex" alignItems="center" gap={1} mb={1}>
+                  <GroupIcon sx={{ color: '#2563EB', fontSize: 20 }} />
+                  <Typography variant="subtitle2" fontWeight={800} sx={{ color: '#1E40AF' }}>
+                    Ticket #{interstitialMatch.ticket_id} — Being Worked On
+                  </Typography>
+                </Box>
+                <Typography variant="body2" fontWeight={700} sx={{ color: '#1D4ED8', mb: 1 }}>
+                  {interstitialMatch.title}
+                </Typography>
+                <Box display="flex" gap={1} my={1.5}>
+                  <Chip
+                    label="Status: IN PROGRESS"
+                    size="small"
+                    style={{ backgroundColor: '#DBEAFE', color: '#1E40AF', fontWeight: 800 }}
+                  />
+                  <Chip
+                    label={`Team: ${interstitialMatch.assigned_team || 'IT Support'}`}
+                    size="small"
+                    style={{ backgroundColor: '#F1F5F9', color: '#334155', fontWeight: 800 }}
+                  />
+                  {interstitialMatch.assigned_agent_name && (
+                    <Chip
+                      label={`Agent: ${interstitialMatch.assigned_agent_name}`}
+                      size="small"
+                      style={{ backgroundColor: '#FEF3C7', color: '#B45309', fontWeight: 800 }}
+                    />
+                  )}
+                </Box>
+                <Typography variant="caption" color="text.secondary" display="block">
+                  {interstitialMatch.description}
+                </Typography>
+                <Alert severity="info" icon={false} sx={{ mt: 1.5, py: 0.5, px: 1.5, fontSize: '0.78rem', borderRadius: 1.5 }}>
+                  This incident was reported by another employee and is currently being worked on.
+                </Alert>
+              </Paper>
             ) : (
               <Paper
                 variant="outlined"
@@ -433,9 +584,9 @@ export default function CreateTicketPage() {
                 }}
               >
                 <Box display="flex" alignItems="center" gap={1} mb={1}>
-                  <GroupIcon sx={{ color: '#D97706', fontSize: 20 }} />
+                  <AccessTimeIcon sx={{ color: '#D97706', fontSize: 20 }} />
                   <Typography variant="subtitle2" fontWeight={800} sx={{ color: '#92400E' }}>
-                    Active Incident Already In Progress — Ticket #{interstitialMatch.ticket_id}
+                    Ticket #{interstitialMatch.ticket_id} — Open in Queue
                   </Typography>
                 </Box>
                 <Typography variant="body2" fontWeight={700} sx={{ color: '#B45309', mb: 1 }}>
@@ -443,7 +594,7 @@ export default function CreateTicketPage() {
                 </Typography>
                 <Box display="flex" gap={1} my={1.5}>
                   <Chip
-                    label={`Status: ${String(interstitialMatch.status).toUpperCase()}`}
+                    label="Status: OPEN"
                     size="small"
                     style={{ backgroundColor: '#FEF3C7', color: '#B45309', fontWeight: 800 }}
                   />
@@ -456,88 +607,40 @@ export default function CreateTicketPage() {
                 <Typography variant="caption" color="text.secondary" display="block">
                   {interstitialMatch.description}
                 </Typography>
-                {!interstitialMatch.is_own_ticket && (
-                  <Alert severity="info" icon={false} sx={{ mt: 1.5, py: 0.5, px: 1.5, fontSize: '0.78rem', borderRadius: 1.5 }}>
-                    This incident was reported by another employee. Support is actively resolving it org-wide.
-                  </Alert>
-                )}
+                <Alert severity="warning" icon={false} sx={{ mt: 1.5, py: 0.5, px: 1.5, fontSize: '0.78rem', borderRadius: 1.5 }}>
+                  This incident was already reported and is currently waiting in the queue for an available agent.
+                </Alert>
               </Paper>
             )}
           </DialogContent>
 
-          <DialogActions sx={{ p: 2.5, pt: 1, gap: 1.5, flexWrap: 'wrap' }}>
-            {interstitialType === 'resolved' ? (
-              <>
-                <Button
-                  variant="contained"
-                  color="success"
-                  fullWidth
-                  onClick={() => {
-                    setInterstitialOpen(false)
-                    navigate('/dashboard')
-                  }}
-                  sx={{ fontWeight: 800, py: 1.25 }}
-                >
-                  This solves my issue
-                </Button>
-                <Button
-                  variant="outlined"
-                  color="inherit"
-                  fullWidth
-                  onClick={() => {
-                    setInterstitialOpen(false)
-                    executeCreateTicket(true)
-                  }}
-                  sx={{ fontWeight: 700, textTransform: 'none' }}
-                >
-                  Still create a ticket
-                </Button>
-              </>
-            ) : (
-              <>
-                {interstitialMatch.is_own_ticket ? (
-                  <Button
-                    variant="contained"
-                    fullWidth
-                    onClick={() => {
-                      const ticketId = interstitialMatch?.ticket_id || interstitialMatch?.id
-                      setInterstitialOpen(false)
-                      if (ticketId) {
-                        navigate(`/tickets?open=${ticketId}`, { state: { openTicketId: ticketId } })
-                      } else {
-                        navigate('/tickets')
-                      }
-                    }}
-                    sx={{ bgcolor: '#2563EB', fontWeight: 800, py: 1.25 }}
-                  >
-                    View my existing ticket
-                  </Button>
-                ) : (
-                  <Button
-                    variant="contained"
-                    fullWidth
-                    onClick={() => {
-                      setInterstitialOpen(false)
-                    }}
-                    sx={{ bgcolor: '#2563EB', fontWeight: 800, py: 1.25 }}
-                  >
-                    Got it, already tracked
-                  </Button>
-                )}
-                <Button
-                  variant="outlined"
-                  color="inherit"
-                  fullWidth
-                  onClick={() => {
-                    setInterstitialOpen(false)
-                    executeCreateTicket(true)
-                  }}
-                  sx={{ fontWeight: 700, textTransform: 'none' }}
-                >
-                  This is different, create anyway
-                </Button>
-              </>
-            )}
+          <DialogActions sx={{ p: 2.5, pt: 1, gap: 1.5, flexDirection: 'column' }}>
+            <Button
+              variant="contained"
+              fullWidth
+              onClick={handleFollowTicket}
+              sx={{ bgcolor: '#2563EB', fontWeight: 800, py: 1.25 }}
+            >
+              Follow #{interstitialMatch.ticket_id}
+            </Button>
+            <Button
+              variant="outlined"
+              color="inherit"
+              fullWidth
+              onClick={handleSubmitMine}
+              sx={{ fontWeight: 700, textTransform: 'none' }}
+            >
+              This is different, submit mine
+            </Button>
+            <Button
+              variant="text"
+              color="inherit"
+              fullWidth
+              onClick={handleDismissModal}
+              sx={{ fontWeight: 600, textTransform: 'none', color: 'text.secondary' }}
+            >
+              Cancel
+            </Button>
           </DialogActions>
         </Dialog>
       )}
@@ -589,6 +692,18 @@ export default function CreateTicketPage() {
           </DialogActions>
         </Dialog>
       )}
+
+      {/* CONFIRMATION TOAST NOTIFICATION */}
+      <Snackbar
+        open={toastOpen}
+        autoHideDuration={5000}
+        onClose={() => setToastOpen(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setToastOpen(false)} severity="success" sx={{ width: '100%', fontWeight: 700 }}>
+          {toastMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   )
 }

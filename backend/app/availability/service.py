@@ -12,6 +12,7 @@ Public API:
 
 import json
 import logging
+import os
 from datetime import datetime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -28,15 +29,16 @@ logger = logging.getLogger(__name__)
 # ── Configuration ─────────────────────────────────────────────
 DEFAULT_TICKET_CAP  = 10
 HANDOVER_MINUTES    = 30
-OPEN_STATUSES       = ["open", "new", "assigned"]
+OPEN_STATUSES       = ["open", "new", "assigned", "in_progress"]
 UNSTARTED_STATUSES  = ["open", "new", "assigned"]
+ASSIGNMENT_MODE     = os.getenv("ASSIGNMENT_MODE", "relaxed")
 
 
 # ── Timezone helper ───────────────────────────────────────────
 
 def _agent_local_now(agent: User, utc_now: datetime) -> datetime:
     tz_str = agent.timezone
-    if not tz_str or tz_str == "UTC":
+    if not tz_str:
         tz_str = "Asia/Kolkata"
     try:
         tz = ZoneInfo(tz_str)
@@ -90,6 +92,11 @@ def _is_on_call(agent: User, utc_now: datetime, db) -> bool:
             ((OnCallRoster.start_dt <= local_now) & (OnCallRoster.end_dt >= local_now))
         )
     ).first() is not None
+
+
+def is_agent_on_shift_or_call(agent: User, utc_now: datetime, db) -> bool:
+    """True if agent is currently on an active shift or active on-call."""
+    return _is_on_shift(agent, utc_now, db) or _is_on_call(agent, utc_now, db)
 
 
 # ── Leave check ───────────────────────────────────────────────
@@ -491,19 +498,149 @@ def _alert_team_lead(ticket: Ticket, team_name: str, reason: str, db):
     print(f"[AVAILABILITY ALERT] {reason}")
 
 
-# ── Skip Reason Helper ─────────────────────────────────────────
+# ── Skip Reason Helpers ────────────────────────────────────────
+
+def _is_agent_in_team(agent: User, target_team: str) -> bool:
+    """Checks if an agent belongs to target_team or equivalent team alias."""
+    if not agent or not agent.assigned_team or not target_team:
+        return False
+    a_team = agent.assigned_team.strip().lower()
+    t_team = target_team.strip().lower()
+    if a_team == t_team:
+        return True
+    network_aliases = {"network operations", "network team", "network & security", "network"}
+    if a_team in network_aliases and t_team in network_aliases:
+        return True
+    it_aliases = {"it support", "desktop support", "it operations", "application support", "sap / erp team", "database operations", "devops & cloud infra", "identity & access management"}
+    if a_team in it_aliases and t_team in it_aliases:
+        return True
+    return False
+
+
+def _get_team_short_name(agent: User) -> str:
+    """Returns a clean concise team name for UI/log formatting."""
+    if not agent or not agent.assigned_team:
+        return "Support"
+    team = agent.assigned_team.strip()
+    if team in ["Network Operations", "Network Team", "Network & Security"]:
+        return "Network"
+    if team in ["Security Team"]:
+        return "Security"
+    return team
+
+
+def _format_skipped_agent(agent: User, utc_now: datetime, count: int, db) -> str:
+    """Formats reason why an agent was skipped for preference or constraint."""
+    if _is_on_leave(agent, utc_now, db):
+        return f"{agent.name} (on leave)"
+    cap = agent.max_open_tickets if agent.max_open_tickets is not None else DEFAULT_TICKET_CAP
+    if count > cap:
+        return f"{agent.name} (over capacity {count}/{cap})"
+    if count == cap:
+        return f"{agent.name} (at capacity {count}/{cap})"
+    if not is_agent_on_shift_or_call(agent, utc_now, db):
+        return f"{agent.name} (off shift)"
+    ticket_str = f"{count} open ticket" if count == 1 else f"{count} open tickets"
+    return f"{agent.name} ({ticket_str})"
+
 
 def _get_agent_skip_reason(agent: User, utc_now: datetime, count: int, db) -> str:
     """Returns human-readable reason why an agent was not assigned."""
     res = get_agent_status(agent, utc_now, db, open_count=count)
     if res.status == "on_leave":
         return "on leave"
+    cap = agent.max_open_tickets if agent.max_open_tickets is not None else DEFAULT_TICKET_CAP
+    if res.status == "at_capacity":
+        return f"over capacity {count}/{cap}" if count > cap else f"at capacity {count}/{cap}"
     if res.status == "off_shift":
         return "off shift"
-    if res.status == "at_capacity":
-        cap = agent.max_open_tickets if agent.max_open_tickets is not None else DEFAULT_TICKET_CAP
-        return "over capacity" if count > cap else "at capacity"
-    return f"{count} open tickets"
+    ticket_str = f"{count} open ticket" if count == 1 else f"{count} open tickets"
+    return ticket_str
+
+
+def _find_manager(target_team: str, db) -> User:
+    """Locates the appropriate manager, team lead, or admin for fallback."""
+    manager = None
+    if target_team:
+        manager = db.query(User).filter(
+            User.assigned_team == target_team,
+            User.role.in_(["manager", "team_lead", "admin"])
+        ).first()
+    if not manager:
+        manager = db.query(User).filter(User.role == "manager").first()
+    if not manager:
+        manager = db.query(User).filter(User.role == "admin").first()
+    return manager
+
+
+# ── Category to Team and Required Skill Mapping ────────────────
+CATEGORY_CONFIG = {
+    "Network": {
+        "team": "Network Operations",
+        "skill": "Network",
+        "aliases": ["network", "networking", "network operations", "network team", "network & security"],
+    },
+    "Hardware": {
+        "team": "IT Support",
+        "skill": "Hardware",
+        "aliases": ["hardware", "desktop support", "it operations"],
+    },
+    "Software": {
+        "team": "IT Support",
+        "skill": "Software",
+        "aliases": ["software", "software/desktop application", "desktop application", "application support", "it operations"],
+    },
+    "Access": {
+        "team": "IT Support",
+        "skill": "Access",
+        "aliases": ["access", "access/accounts", "identity & access management", "identity", "accounts", "it operations"],
+    },
+    "Email": {
+        "team": "IT Support",
+        "skill": "Email",
+        "aliases": ["email", "it operations"],
+    },
+    "Security": {
+        "team": "Security Team",
+        "skill": "Security",
+        "aliases": ["security", "security team", "network & security"],
+    },
+    "Application/Backend": {
+        "team": "IT Support",
+        "skill": "Application/Backend",
+        "aliases": ["application/backend", "backend", "application support", "it operations"],
+    },
+    "Printer/Peripheral": {
+        "team": "IT Support",
+        "skill": "Printer",
+        "aliases": ["printer", "printer/peripheral", "hardware", "it operations"],
+    },
+    "Internal Project": {
+        "team": "IT Support",
+        "skill": "Internal Project",
+        "aliases": ["internal project", "application support"],
+    },
+}
+
+def agent_has_skill(agent: User, required_skill: str) -> bool:
+    """
+    Checks if an agent possesses the required skill by inspecting agent.department and agent.assigned_team.
+    """
+    if not required_skill:
+        return True
+
+    agent_text = f"{agent.department or ''} {agent.assigned_team or ''}".lower()
+    req_lower = required_skill.lower()
+
+    if req_lower in agent_text:
+        return True
+
+    for conf in CATEGORY_CONFIG.values():
+        if conf["skill"].lower() == req_lower:
+            for alias in conf["aliases"]:
+                if alias.lower() in agent_text:
+                    return True
+    return False
 
 
 # ── Main entry point ──────────────────────────────────────────
@@ -511,106 +648,302 @@ def _get_agent_skip_reason(agent: User, utc_now: datetime, count: int, db) -> st
 def assign_agent_for_ticket(ticket: Ticket, team_name: str, db,
                              override_by: str = None,
                              exclude_agent_id: int = None,
-                             reason_prefix: str = "") -> tuple:
+                             reason_prefix: str = "",
+                             mode: str = None) -> tuple:
     """
     Called after routing determines team_name.
-    Guarantees ticket assignment across the 3-step chain:
-      (a) available skilled agent, lowest workload;
-      (b) skilled agent not on leave even if off shift (log "queued until shift start");
-      (c) manager as last resort + notification.
+    Supports ASSIGNMENT_MODE = "relaxed" (default) | "strict".
     
+    In Relaxed Mode:
+      Active approved leave is the ONLY hard exclusion. Shift status and ticket cap
+      are preferences. Never assigns to manager/admin while ANY agent is not on leave.
+      Chain:
+        1) agent in ticket's team: not on leave, in shift, below cap -> lowest workload
+        2) agent from any other team: not on leave, in shift, below cap -> lowest workload (prefer related skills)
+        3) any agent not on leave, even if off shift or over cap -> lowest workload (logs "assigned outside shift/over capacity")
+        4) manager ONLY if every agent is on leave (logs "FALLBACK: All agents on leave.")
+        
+    In Strict Mode:
+      Shift and cap are hard blockers. Off-shift / over-cap agents are blocked from assignment.
+      
     Every path writes an AssignmentLog row naming each skipped agent and why.
-    Never sets assigned_team to 'Unassigned-Urgent'.
     """
+    current_mode = (mode or os.getenv("ASSIGNMENT_MODE", ASSIGNMENT_MODE) or "relaxed").strip().lower()
     utc_now = datetime.utcnow()
 
-    # Find skilled agents for this team (role == 'agent')
+    # 1. Determine required skill and canonical team from ticket category
+    cat = (getattr(ticket, "category", "") or "").strip()
+    required_skill = None
+    target_team = team_name
+    for cat_name, conf in CATEGORY_CONFIG.items():
+        if cat.lower() == cat_name.lower() or cat.lower() in [a.lower() for a in conf["aliases"]]:
+            required_skill = conf["skill"]
+            if not target_team or target_team in ["Unassigned-Urgent", "Unassigned/Triage"]:
+                target_team = conf["team"]
+            break
+
+    # Find all eligible agent-role users across all teams
     query = db.query(User).filter(User.role == "agent")
     if exclude_agent_id:
         query = query.filter(User.id != exclude_agent_id)
-    if team_name and team_name not in ["Unassigned-Urgent", "Unassigned/Triage"]:
-        if team_name in ["Network Operations", "Network Team", "Network & Security", "Network"]:
-            query = query.filter(User.assigned_team.in_(["Network Operations", "Network Team", "Network & Security", "Network"]))
-        else:
-            query = query.filter(User.assigned_team == team_name)
     all_agents = query.all()
 
-    # If no agents in that specific team, consider all active agents
     if not all_agents:
-        q_all = db.query(User).filter(User.role == "agent")
-        if exclude_agent_id:
-            q_all = q_all.filter(User.id != exclude_agent_id)
-        all_agents = q_all.all()
+        manager = _find_manager(target_team, db)
+        mgr_name = manager.name if manager else "Team Lead"
+        mgr_id = manager.id if manager else None
+        reason = f"{reason_prefix}Assigned to {mgr_name} (Manager escalation: no agents found)."
+        _log_assignment(ticket.id, manager, [], reason, "manager_escalation_no_agents", override_by, db)
+        _alert_team_lead(ticket, target_team or "General", reason, db)
+        ticket.assigned_agent_id = mgr_id
+        ticket.assigned_agent_name = mgr_name
+        db.commit()
+        return manager, reason
 
     counts = _open_ticket_counts([a.name for a in all_agents], db)
+    non_leave_agents = [a for a in all_agents if not _is_on_leave(a, utc_now, db)]
+    in_work_agents = [a for a in non_leave_agents if is_agent_on_shift_or_call(a, utc_now, db)]
 
-    # ── (a) Available skilled agent (not on leave, on shift/call, below cap) ────
-    eligible = [a for a in all_agents if is_available(a, utc_now, db, open_count=counts.get(a.name, 0))]
-    if eligible:
-        chosen = _pick_best_agent(eligible, counts)
+    if current_mode == "relaxed":
+        # ── Relaxed Assignment Chain ─────────────────────────────────
+        # Step 4: Manager only if EVERY agent is on leave
+        if not non_leave_agents:
+            manager = _find_manager(target_team, db)
+            mgr_name = manager.name if manager else "Team Lead"
+            mgr_id = manager.id if manager else None
+            skipped = [_format_skipped_agent(a, utc_now, counts.get(a.name, 0), db) for a in all_agents]
+            skip_str = f" Skipped: {', '.join(skipped)}." if skipped else ""
+            reason = f"{reason_prefix}FALLBACK: All agents on leave. Assigned to Manager {mgr_name} as last resort.{skip_str}"
+            fallback = "Reassigned due to leave" if "Reassigned due to leave" in reason_prefix else "manager_last_resort"
+            _log_assignment(ticket.id, manager, all_agents, reason, fallback, override_by, db)
+            _alert_team_lead(ticket, target_team or "General", reason, db)
+            ticket.assigned_agent_id = mgr_id
+            ticket.assigned_agent_name = mgr_name
+            db.commit()
+            return manager, reason
+
+        if in_work_agents:
+            # ── HARD REQUIREMENT: Always assign to an agent who is IN WORK (on shift / on call)
+            # Regardless of department, and even if in-work agents are at or above ticket cap.
+            # An off-shift person is NEVER assigned when any agent is in work.
+
+            # 1. In-work agent in ticket's team below cap
+            step1_candidates = [
+                a for a in in_work_agents
+                if _is_agent_in_team(a, target_team) and _is_below_cap(a, counts.get(a.name, 0))
+            ]
+            if step1_candidates:
+                chosen = min(
+                    step1_candidates,
+                    key=lambda a: (
+                        0 if (required_skill and agent_has_skill(a, required_skill)) else 1,
+                        counts.get(a.name, 0),
+                        a.id
+                    )
+                )
+                is_cross_team = False
+                outside_shift = False
+            else:
+                # 2. In-work agent from any other team below cap (cross-team)
+                step2_candidates = [
+                    a for a in in_work_agents
+                    if (not _is_agent_in_team(a, target_team)) and _is_below_cap(a, counts.get(a.name, 0))
+                ]
+                if step2_candidates:
+                    chosen = min(
+                        step2_candidates,
+                        key=lambda a: (
+                            counts.get(a.name, 0),
+                            0 if (required_skill and agent_has_skill(a, required_skill)) else 1,
+                            a.id
+                        )
+                    )
+                    is_cross_team = True
+                    outside_shift = False
+                else:
+                    # 3. All in-work agents are at or above cap: distribute to in-work agent with lowest workload
+                    # Prefer in-team if any, else cross-team. NEVER assign to an off-shift agent!
+                    in_team_in_work = [a for a in in_work_agents if _is_agent_in_team(a, target_team)]
+                    pool = in_team_in_work if in_team_in_work else in_work_agents
+                    chosen = min(
+                        pool,
+                        key=lambda a: (
+                            counts.get(a.name, 0),
+                            0 if (required_skill and agent_has_skill(a, required_skill)) else 1,
+                            a.id
+                        )
+                    )
+                    is_cross_team = not _is_agent_in_team(chosen, target_team)
+                    outside_shift = False
+        else:
+            # Only reached if literally NO agent in the system is currently in work (all are off shift)
+            chosen = min(
+                non_leave_agents,
+                key=lambda a: (
+                    counts.get(a.name, 0),
+                    0 if (required_skill and agent_has_skill(a, required_skill)) else 1,
+                    a.id
+                )
+            )
+            is_cross_team = not _is_agent_in_team(chosen, target_team)
+            outside_shift = True
+
+        chosen_team_short = _get_team_short_name(chosen)
+        cross_str = ", cross-team" if is_cross_team else ""
+        c_count = counts.get(chosen.name, 0)
+        ticket_str = f"{c_count} open ticket" if c_count == 1 else f"{c_count} open tickets"
+
+        if outside_shift:
+            extra_note = ", assigned outside shift - queued until shift start"
+            assigned_desc = f"Assigned to {chosen.name} ({chosen_team_short}{cross_str}, {ticket_str}{extra_note})."
+            fallback = "Reassigned due to leave" if "Reassigned due to leave" in reason_prefix else "queued_off_shift"
+        else:
+            assigned_desc = f"Assigned to {chosen.name} ({chosen_team_short}{cross_str}, {ticket_str})."
+            fallback = "Reassigned due to leave" if "Reassigned due to leave" in reason_prefix else None
+
         skipped = [
-            f"{a.name} ({_get_agent_skip_reason(a, utc_now, counts.get(a.name, 0), db)})"
+            _format_skipped_agent(a, utc_now, counts.get(a.name, 0), db)
             for a in all_agents if a.id != chosen.id
         ]
-        skip_str = f" Skipped: {', '.join(skipped)}" if skipped else ""
-        reason = f"{reason_prefix}Assigned to {chosen.name}.{skip_str}"
-        fallback = "Reassigned due to leave" if "Reassigned due to leave" in reason_prefix else None
+        skip_str = f" Skipped for preference: {', '.join(skipped)}." if skipped else ""
+        reason = f"{reason_prefix}{assigned_desc}{skip_str}"
+
         _log_assignment(ticket.id, chosen, all_agents, reason, fallback, override_by, db)
         ticket.assigned_agent_id = chosen.id
         ticket.assigned_agent_name = chosen.name
         db.commit()
         return chosen, reason
 
-    # ── (b) Skilled agent not on leave and below cap, even if off shift ──────────
-    not_on_leave = [
+    else:
+        # ── Strict Mode ─────────────────────────────────────────────
+        # Shift and ticket cap are hard blockers.
+        in_team = [
+            a for a in non_leave_agents
+            if _is_agent_in_team(a, target_team)
+            and is_agent_on_shift_or_call(a, utc_now, db)
+            and _is_below_cap(a, counts.get(a.name, 0))
+        ]
+        if in_team:
+            chosen = min(
+                in_team,
+                key=lambda a: (
+                    0 if (required_skill and agent_has_skill(a, required_skill)) else 1,
+                    counts.get(a.name, 0),
+                    a.id
+                )
+            )
+            chosen_team_short = _get_team_short_name(chosen)
+            c_count = counts.get(chosen.name, 0)
+            ticket_str = f"{c_count} open ticket" if c_count == 1 else f"{c_count} open tickets"
+            assigned_desc = f"Assigned to {chosen.name} ({chosen_team_short}, {ticket_str})."
+            skipped = [
+                _format_skipped_agent(a, utc_now, counts.get(a.name, 0), db)
+                for a in all_agents if a.id != chosen.id
+            ]
+            skip_str = f" Skipped: {', '.join(skipped)}." if skipped else ""
+            reason = f"{reason_prefix}{assigned_desc}{skip_str}"
+            _log_assignment(ticket.id, chosen, all_agents, reason, None, override_by, db)
+            ticket.assigned_agent_id = chosen.id
+            ticket.assigned_agent_name = chosen.name
+            db.commit()
+            return chosen, reason
+
+        cross_team = [
+            a for a in non_leave_agents
+            if is_agent_on_shift_or_call(a, utc_now, db)
+            and _is_below_cap(a, counts.get(a.name, 0))
+        ]
+        if cross_team:
+            chosen = min(
+                cross_team,
+                key=lambda a: (
+                    counts.get(a.name, 0),
+                    0 if (required_skill and agent_has_skill(a, required_skill)) else 1,
+                    a.id
+                )
+            )
+            chosen_team_short = _get_team_short_name(chosen)
+            c_count = counts.get(chosen.name, 0)
+            ticket_str = f"{c_count} open ticket" if c_count == 1 else f"{c_count} open tickets"
+            assigned_desc = f"Assigned to {chosen.name} ({chosen_team_short}, cross-team, {ticket_str})."
+            skipped = [
+                _format_skipped_agent(a, utc_now, counts.get(a.name, 0), db)
+                for a in all_agents if a.id != chosen.id
+            ]
+            skip_str = f" Skipped: {', '.join(skipped)}." if skipped else ""
+            reason = f"{reason_prefix}{assigned_desc}{skip_str}"
+            _log_assignment(ticket.id, chosen, all_agents, reason, None, override_by, db)
+            ticket.assigned_agent_id = chosen.id
+            ticket.assigned_agent_name = chosen.name
+            db.commit()
+            return chosen, reason
+
+        # Strict mode blocks off-shift / over-capacity agents
+        manager = _find_manager(target_team, db)
+        mgr_name = manager.name if manager else "Team Lead"
+        mgr_id = manager.id if manager else None
+        skipped = [_format_skipped_agent(a, utc_now, counts.get(a.name, 0), db) for a in all_agents]
+        skip_str = f" Skipped: {', '.join(skipped)}." if skipped else ""
+        reason = f"{reason_prefix}FALLBACK: Strict mode blocked unavailable/off-shift/over-capacity agents. Assigned to Manager {mgr_name} as last resort.{skip_str}"
+        _log_assignment(ticket.id, manager, all_agents, reason, "manager_last_resort_strict", override_by, db)
+        _alert_team_lead(ticket, target_team or "General", reason, db)
+        ticket.assigned_agent_id = mgr_id
+        ticket.assigned_agent_name = mgr_name
+        db.commit()
+        return manager, reason
+
+
+def reassign_manager_fallback_tickets(db) -> list:
+    """
+    Finds all open/assigned/in_progress tickets currently assigned to a manager/admin
+    OR assigned to an off-shift/on-leave agent when in-work agents are available,
+    and re-runs assign_agent_for_ticket in relaxed mode.
+    Returns list of reassignments: [{'ticket_id': t.id, 'old_agent': ..., 'new_agent': ..., 'reason': ...}]
+    """
+    utc_now = datetime.utcnow()
+    all_agents = db.query(User).filter(User.role == "agent").all()
+    in_work_agents = [
         a for a in all_agents
-        if not _is_on_leave(a, utc_now, db) and _is_below_cap(a, counts.get(a.name, 0))
+        if (not _is_on_leave(a, utc_now, db)) and is_agent_on_shift_or_call(a, utc_now, db)
     ]
-    if not_on_leave:
-        chosen = min(not_on_leave, key=lambda a: counts.get(a.name, 0))
-        skipped = [
-            f"{a.name} ({_get_agent_skip_reason(a, utc_now, counts.get(a.name, 0), db)})"
-            for a in all_agents if a.id != chosen.id
-        ]
-        skip_str = f" Skipped: {', '.join(skipped)}" if skipped else ""
-        reason = f"{reason_prefix}Assigned to {chosen.name} (queued until shift start).{skip_str}"
-        fallback = "Reassigned due to leave" if "Reassigned due to leave" in reason_prefix else "queued_off_shift"
-        _log_assignment(ticket.id, chosen, all_agents, reason, fallback, override_by, db)
-        ticket.assigned_agent_id = chosen.id
-        ticket.assigned_agent_name = chosen.name
-        db.commit()
-        return chosen, reason
 
-    # ── (c) Manager as last resort + notification ────────────────────────────────
-    manager = None
-    if team_name:
-        manager = db.query(User).filter(
-            User.assigned_team == team_name,
-            User.role.in_(["manager", "team_lead", "admin"])
-        ).first()
-    if not manager:
-        manager = db.query(User).filter(User.role == "manager").first()
-    if not manager:
-        manager = db.query(User).filter(User.role == "admin").first()
+    manager_users = db.query(User).filter(User.role.in_(["manager", "admin", "team_lead"])).all()
+    manager_ids = [u.id for u in manager_users]
+    manager_names = [u.name for u in manager_users]
 
-    skipped = [
-        f"{a.name} ({_get_agent_skip_reason(a, utc_now, counts.get(a.name, 0), db)})"
-        for a in all_agents
-    ]
-    skip_str = f" Skipped: {', '.join(skipped)}." if skipped else ""
+    # If any agent is in work, off-shift and on-leave agents should not be holding tickets
+    target_ids = list(manager_ids)
+    target_names = list(manager_names)
+    if in_work_agents:
+        for a in all_agents:
+            if not is_agent_on_shift_or_call(a, utc_now, db) or _is_on_leave(a, utc_now, db):
+                target_ids.append(a.id)
+                target_names.append(a.name)
 
-    mgr_name = manager.name if manager else "Team Lead"
-    mgr_id = manager.id if manager else None
-    reason = f"{reason_prefix}FALLBACK: All agents on leave. Assigned to Manager {mgr_name} as last resort.{skip_str}"
-    fallback = "Reassigned due to leave" if "Reassigned due to leave" in reason_prefix else "manager_last_resort"
+    tickets = db.query(Ticket).filter(
+        Ticket.status.in_(["open", "assigned", "in_progress"]),
+        (Ticket.assigned_agent_id.in_(target_ids) | Ticket.assigned_agent_name.in_(target_names))
+    ).order_by(Ticket.id).all()
 
-    _log_assignment(ticket.id, manager, all_agents, reason, fallback, override_by, db)
-    _alert_team_lead(ticket, team_name or "General", reason, db)
-
-    ticket.assigned_agent_id = mgr_id
-    ticket.assigned_agent_name = mgr_name
-    db.commit()
-    return manager, reason
+    reassigned = []
+    for t in tickets:
+        old_name = t.assigned_agent_name
+        chosen, reason = assign_agent_for_ticket(
+            ticket=t,
+            team_name=t.assigned_team,
+            db=db,
+            reason_prefix="Reassigned to in-work agent: ",
+            mode="relaxed",
+        )
+        if chosen and chosen.role == "agent":
+            reassigned.append({
+                "ticket_id": t.id,
+                "title": t.title,
+                "old_agent": old_name,
+                "new_agent": chosen.name,
+                "reason": reason,
+            })
+    return reassigned
 
 
 # ── Who is available now (admin screen) ───────────────────────
@@ -620,7 +953,7 @@ def assign_agent_for_ticket(ticket: Ticket, team_name: str, db,
 def _shift_end_local_batched(agent, utc_aware, shifts_for_agent):
     """Returns shift-end label (e.g. "18:00 IST") from pre-fetched shifts. No DB hit."""
     tz_str = agent.timezone
-    if not tz_str or tz_str == "UTC":
+    if not tz_str:
         tz_str = "Asia/Kolkata"
     try:
         tz = ZoneInfo(tz_str)
@@ -651,7 +984,7 @@ def _shift_end_local_batched(agent, utc_aware, shifts_for_agent):
 def _on_shift_batched(agent, utc_aware, shifts_for_agent):
     """Check if agent is on shift using pre-fetched list. No DB hit."""
     tz_str = agent.timezone
-    if not tz_str or tz_str == "UTC":
+    if not tz_str:
         tz_str = "Asia/Kolkata"
     try:
         tz = ZoneInfo(tz_str)

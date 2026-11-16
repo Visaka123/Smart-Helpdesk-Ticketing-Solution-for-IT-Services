@@ -105,7 +105,7 @@ function MessageBubble({
         const info: EscalatedTicketInfo = {
           id: Number(tk.id) || 14,
           title: String(tk.title || ticketTitle),
-          category: String(tk.category || 'Internal Project'),
+          category: String(tk.category || 'Software'),
           priority: String(tk.priority || 'Critical'),
           assigned_team: String(tk.assigned_team || tk.predicted_team || 'Database Operations'),
           sla_hours: Number(tk.sla_hours) || 4,
@@ -343,7 +343,7 @@ function MessageBubble({
                     Subject: {createdTicket?.title || 'MySQL RDS secondary node failover unresponsive'}
                   </Typography>
                   <Typography variant="body2">
-                    <strong>Category:</strong> <Chip label={createdTicket?.category || 'Internal Project'} size="small" sx={{ fontSize: '0.72rem', height: 20 }} />
+                    <strong>Category:</strong> <Chip label={createdTicket?.category || 'Software'} size="small" sx={{ fontSize: '0.72rem', height: 20 }} />
                   </Typography>
                   <Typography variant="body2">
                     <strong>Assigned Team:</strong> <Chip label={createdTicket?.assigned_team || 'Database Operations'} size="small" style={{ backgroundColor: '#DBEAFE', color: '#1E40AF', fontWeight: 800 }} />

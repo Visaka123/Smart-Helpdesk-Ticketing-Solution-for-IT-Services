@@ -265,6 +265,7 @@ def seed_load():
         if mike:
             mike.timezone = "Asia/Kolkata"
             mike.assigned_team = "Network Operations"
+            mike.department = "Network Operations, Network, Security"
             # Activate Mike's shift
             mike_shift = db.query(AgentShift).filter(AgentShift.agent_id == mike.id).first()
             if mike_shift:
@@ -286,6 +287,8 @@ def seed_load():
         sarah = db.query(User).filter(User.name.like("%Sarah%")).first()
         if sarah:
             sarah.timezone = "Asia/Kolkata"
+            sarah.assigned_team = "IT Support"
+            sarah.department = "IT Operations, Software, Hardware, Access, Email, Application/Backend, Printer"
         db.commit()
 
         # 4. Upsert 5 realistic agents

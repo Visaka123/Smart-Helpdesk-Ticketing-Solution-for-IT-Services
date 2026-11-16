@@ -31,6 +31,17 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"[STARTUP WARN] Shared embedder pre-load notice: {e}")
 
+    try:
+        from app.database.database import SessionLocal
+        from app.availability.service import reassign_manager_fallback_tickets
+        db_startup = SessionLocal()
+        reassigned = reassign_manager_fallback_tickets(db_startup)
+        db_startup.close()
+        if reassigned:
+            print(f"[STARTUP] Reassigned {len(reassigned)} manager fallback tickets to available agents.")
+    except Exception as e:
+        print(f"[STARTUP WARN] Manager ticket reassignment on startup: {e}")
+
     stop_event = threading.Event()
     if HAS_APSCHEDULER and scheduler:
         # Run SLA audit and availability checks automatically

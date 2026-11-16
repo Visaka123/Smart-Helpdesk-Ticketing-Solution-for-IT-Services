@@ -388,7 +388,7 @@ def RAG_chatbot_query(user_query: str, min_similarity_threshold: float = 0.30, m
                 title_summary = "MySQL RDS secondary node failover unresponsive" if ("sys_db_failover" in query_lower or "secondary node" in query_lower or "mysql" in query_lower) else user_query_clean.split(".")[0][:75]
 
                 routing_info = classify_and_route_ticket(title_summary, user_query_clean)
-                cat = routing_info.get("category", "Internal Project")
+                cat = routing_info.get("category", "Software")
                 team = "Database Operations" if ("database" in query_lower or "mysql" in query_lower or "node" in query_lower or "failover" in query_lower) else routing_info.get("assigned_team", "Database Operations")
                 priority = "Critical" if ("critical" in query_lower or routing_info.get("priority") == "Critical") else routing_info.get("priority", "High")
                 sla_target = "4 hours" if priority == "Critical" else routing_info.get("sla_target", "24 hours")

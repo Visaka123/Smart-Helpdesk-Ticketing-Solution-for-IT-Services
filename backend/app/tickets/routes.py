@@ -34,6 +34,18 @@ class DuplicateCheckRequest(BaseModel):
     title: str
     description: str
 
+class FollowTicketRequest(BaseModel):
+    requester_name: Optional[str] = "Alice Employee"
+    requester_department: Optional[str] = "Finance"
+    similarity_score: Optional[float] = 0.0
+    new_ticket_text: Optional[str] = ""
+
+class DuplicateDecisionRequest(BaseModel):
+    ticket_text: Optional[str] = ""
+    matched_ticket_id: Optional[int] = None
+    similarity_score: Optional[float] = 0.0
+    decision: str  # "followed", "submitted_anyway", "dismissed"
+
 class EmployeeCommentRequest(BaseModel):
     content: str
 
@@ -101,6 +113,66 @@ def check_duplicate_endpoint(req: DuplicateCheckRequest, request: Request):
     finally:
         db.close()
 
+@router.post("/{ticket_id}/follow")
+@router.post("/follow/{ticket_id}")
+def follow_ticket_endpoint(ticket_id: int, req: FollowTicketRequest, request: Request):
+    db = SessionLocal()
+    try:
+        ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+        if not ticket:
+            raise HTTPException(status_code=404, detail="Ticket not found")
+
+        user = get_current_user_from_headers(request, db)
+        user_id = user.id if user else None
+        req_name = req.requester_name or (user.name if user else "Alice Employee")
+        req_dept = req.requester_department or (user.department if user else "General")
+
+        existing_link = db.query(TicketRequester).filter(
+            TicketRequester.ticket_id == ticket_id,
+            TicketRequester.requester_name == req_name
+        ).first()
+
+        if not existing_link:
+            link = TicketRequester(
+                ticket_id=ticket_id,
+                user_id=user_id,
+                requester_name=req_name,
+                requester_department=req_dept,
+                link_reason="followed_similar_incident"
+            )
+            db.add(link)
+            db.commit()
+
+        # Telemetry log
+        record_duplicate_feedback(
+            new_ticket_text=req.new_ticket_text or f"Followed Ticket #{ticket_id}",
+            matched_ticket_id=ticket_id,
+            similarity_score=float(req.similarity_score or 0.0),
+            user_action="followed",
+            db=db
+        )
+
+        requester_count = 1 + db.query(TicketRequester).filter(TicketRequester.ticket_id == ticket_id).count()
+
+        return {
+            "success": True,
+            "message": f"You will get updates on #{ticket_id}",
+            "ticket_id": ticket_id,
+            "requester_count": requester_count
+        }
+    finally:
+        db.close()
+
+@router.post("/log-duplicate-decision")
+def log_duplicate_decision_endpoint(req: DuplicateDecisionRequest):
+    record_duplicate_feedback(
+        new_ticket_text=req.ticket_text or "Decision logged",
+        matched_ticket_id=req.matched_ticket_id,
+        similarity_score=float(req.similarity_score or 0.0),
+        user_action=req.decision
+    )
+    return {"success": True, "decision": req.decision}
+
 @router.post("/create")
 def create_ticket(req: TicketCreateRequest, request: Request):
     print(f"\n=======================================================")
@@ -146,6 +218,9 @@ def create_ticket(req: TicketCreateRequest, request: Request):
                 "requester_count": 1,
                 "created_at": str(recent_dup.created_at),
                 "sla_due_at": str(recent_dup.sla_due_at),
+                "assigned_agent_name": recent_dup.assigned_agent_name,
+                "assigned_agent_id": recent_dup.assigned_agent_id,
+                "assignment_reason": f"Assigned to {recent_dup.assigned_agent_name}" if recent_dup.assigned_agent_name else "Queued for assignment",
             },
             "message": f"Ticket #{recent_dup.id} retrieved (deduplicated).",
         }
@@ -182,6 +257,7 @@ def create_ticket(req: TicketCreateRequest, request: Request):
                 matched_ticket_id=matched_id,
                 similarity_score=match["semantic_score"],
                 user_action="hard_blocked_auto_linked",
+                db=db,
             )
 
             res_dict = {
@@ -212,6 +288,7 @@ def create_ticket(req: TicketCreateRequest, request: Request):
                 matched_ticket_id=matched_id,
                 similarity_score=match["semantic_score"],
                 user_action="hard_blocked_resolved_solution",
+                db=db,
             )
 
             res_dict = {
@@ -277,6 +354,7 @@ def create_ticket(req: TicketCreateRequest, request: Request):
     db.refresh(ticket)
 
     # ── Availability-aware agent assignment (B6: graceful degradation) ────
+    assignment_reason = None
     try:
         chosen_agent, assignment_reason = assign_agent_for_ticket(ticket, assigned_team, db)
         if chosen_agent:
@@ -330,6 +408,9 @@ def create_ticket(req: TicketCreateRequest, request: Request):
             "sla_due_at": str(ticket.sla_due_at),
             "sla_hours": sla_hours,
             "is_demo": bool(ticket.is_demo),
+            "assigned_agent_name": ticket.assigned_agent_name,
+            "assigned_agent_id": ticket.assigned_agent_id,
+            "assignment_reason": assignment_reason or (f"Assigned to {ticket.assigned_agent_name}" if ticket.assigned_agent_name else "Queued for assignment"),
         },
         "message": "Ticket created successfully and classified by Single-Pass LLM Dispatcher.",
     }
