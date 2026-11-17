@@ -2,6 +2,7 @@ from app.models.user import User
 from app.models.team import Team
 from app.models.ticket import Ticket, TicketRequester, SuggestionFeedback
 from app.models.comment import TicketComment
+from app.models.attachment import TicketAttachment
 from app.models.sla import SLAEscalationLog
 from app.models.knowledge import KnowledgeArticle
 from app.models.feedback import DuplicateFeedbackLog
@@ -15,6 +16,7 @@ __all__ = [
     "TicketRequester",
     "SuggestionFeedback",
     "TicketComment",
+    "TicketAttachment",
     "SLAEscalationLog",
     "KnowledgeArticle",
     "DuplicateFeedbackLog",

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Box, Typography,
-  Button, Chip, Divider, Paper, TextField, CircularProgress, Alert, Rating, IconButton, useTheme
+  Button, Chip, Divider, Paper, TextField, CircularProgress, Alert, Rating, IconButton, useTheme, Grid
 } from '@mui/material'
 import CloseIcon from '@mui/icons-material/Close'
 import SendIcon from '@mui/icons-material/Send'
@@ -258,6 +258,55 @@ export default function EmployeeTicketDetailsModal({
                 {ticket.description}
               </Typography>
             </Paper>
+
+            {/* Attached Documents Section */}
+            {ticket.attachments && ticket.attachments.length > 0 && (
+              <Box>
+                <Typography variant="caption" fontWeight={700} sx={{ color: theme.palette.text.secondary, display: 'block', mb: 1, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  Attached Documents ({ticket.attachments.length})
+                </Typography>
+                <Grid container spacing={1.5}>
+                  {ticket.attachments.map((att: any) => (
+                    <Grid item xs={12} sm={6} key={att.id}>
+                      <Paper
+                        variant="outlined"
+                        sx={{
+                          p: 1.5,
+                          borderRadius: 2,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 1,
+                        }}
+                      >
+                        <Box display="flex" alignItems="center" gap={1.2} sx={{ minWidth: 0 }}>
+                          <DescriptionIcon sx={{ color: '#2563EB', fontSize: 24 }} />
+                          <Box sx={{ minWidth: 0 }}>
+                            <Typography variant="body2" fontWeight={600} noWrap sx={{ maxWidth: { xs: 180, sm: 220 } }}>
+                              {att.filename}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {att.formatted_size || `${(att.file_size / 1024).toFixed(1)} KB`} • {att.uploaded_by || 'Requester'}
+                            </Typography>
+                          </Box>
+                        </Box>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          href={`${API_BASE}${att.download_url}`}
+                          target="_blank"
+                          download
+                          startIcon={<DownloadIcon style={{ fontSize: 14 }} />}
+                          sx={{ textTransform: 'none', fontSize: '0.75rem', px: 1.5, py: 0.5, flexShrink: 0 }}
+                        >
+                          Download
+                        </Button>
+                      </Paper>
+                    </Grid>
+                  ))}
+                </Grid>
+              </Box>
+            )}
 
             {/* User-Facing Resolution Summary Box (If Resolved) */}
             {ticket.resolution_summary && (

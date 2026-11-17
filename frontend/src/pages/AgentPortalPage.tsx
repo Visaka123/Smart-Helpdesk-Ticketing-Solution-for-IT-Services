@@ -38,6 +38,9 @@ import BeachAccessIcon from '@mui/icons-material/BeachAccess'
 import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import HistoryEduIcon from '@mui/icons-material/HistoryEdu'
+import AttachFileIcon from '@mui/icons-material/AttachFile'
+import DownloadIcon from '@mui/icons-material/Download'
+import DescriptionIcon from '@mui/icons-material/Description'
 import axios from 'axios'
 import { fixesApi, availabilityApi } from '../api/services'
 import type { SuggestedFix, AgentAvailability } from '../types'
@@ -929,6 +932,60 @@ export default function AgentPortalPage() {
                     {ticketDetail.description ? ticketDetail.description.replace(/\\n/g, '\n') : ''}
                   </ReactMarkdown>
                 </Paper>
+
+                {/* ATTACHED DOCUMENTS */}
+                {ticketDetail.attachments && ticketDetail.attachments.length > 0 && (
+                  <Box mb={2}>
+                    <Box display="flex" alignItems="center" gap={1} mb={1}>
+                      <AttachFileIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                      <Typography variant="caption" style={{ color: theme.palette.text.secondary, fontWeight: 700 }}>
+                        ATTACHED DOCUMENTS ({ticketDetail.attachments.length}):
+                      </Typography>
+                    </Box>
+                    <Grid container spacing={1}>
+                      {ticketDetail.attachments.map((att: any) => (
+                        <Grid item xs={12} sm={6} key={att.id}>
+                          <Paper
+                            variant="outlined"
+                            sx={{
+                              p: 1.2,
+                              px: 1.5,
+                              borderRadius: 2,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              gap: 1,
+                              bgcolor: theme.palette.mode === 'light' ? '#FFFFFF' : '#1E293B',
+                            }}
+                          >
+                            <Box display="flex" alignItems="center" gap={1} sx={{ minWidth: 0 }}>
+                              <DescriptionIcon sx={{ color: '#2563EB', fontSize: 20 }} />
+                              <Box sx={{ minWidth: 0 }}>
+                                <Typography variant="body2" fontWeight={600} noWrap sx={{ maxWidth: { xs: 140, sm: 190 } }}>
+                                  {att.filename}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {att.formatted_size || `${(att.file_size / 1024).toFixed(1)} KB`} • {att.uploaded_by || 'User'}
+                                </Typography>
+                              </Box>
+                            </Box>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              href={`${API_BASE}${att.download_url}`}
+                              target="_blank"
+                              download
+                              startIcon={<DownloadIcon style={{ fontSize: 13 }} />}
+                              sx={{ textTransform: 'none', fontSize: '0.72rem', px: 1.2, py: 0.3, flexShrink: 0 }}
+                            >
+                              Download
+                            </Button>
+                          </Paper>
+                        </Grid>
+                      ))}
+                    </Grid>
+                  </Box>
+                )}
 
                 {/* ITSM TIMELINE & AUDIT LOGS */}
                 <Typography variant="caption" style={{ color: theme.palette.text.secondary, fontWeight: 700, display: 'block', marginBottom: 8 }}>

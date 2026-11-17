@@ -35,10 +35,15 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import ThumbDownAltOutlinedIcon from '@mui/icons-material/ThumbDownAltOutlined'
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
+import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined'
+import InsertDriveFileOutlinedIcon from '@mui/icons-material/InsertDriveFileOutlined'
+import PictureAsPdfOutlinedIcon from '@mui/icons-material/PictureAsPdfOutlined'
+import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined'
+import AttachFileIcon from '@mui/icons-material/AttachFile'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
-import { fixesApi } from '../api/services'
-import type { SuggestedFix } from '../types'
+import { fixesApi, attachmentApi } from '../api/services'
+import type { SuggestedFix, TicketAttachment } from '../types'
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? ''
 
@@ -68,6 +73,90 @@ export default function CreateTicketPage() {
   // Ticket Created Confirmation Modal
   const [successDialogOpen, setSuccessDialogOpen] = useState(false)
   const [createdTicket, setCreatedTicket] = useState<any>(null)
+
+  // Document Attachment State
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([])
+  const [fileError, setFileError] = useState<string | null>(null)
+  const [uploadingFiles, setUploadingFiles] = useState<boolean>(false)
+  const [isDragging, setIsDragging] = useState<boolean>(false)
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null)
+
+  const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024 // 15MB
+  const FORBIDDEN_EXTENSIONS = ['.exe', '.bat', '.cmd', '.sh', '.msi', '.vbs', '.js', '.bin', '.com', '.scr', '.pif']
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`
+  }
+
+  const getFileIcon = (filename: string) => {
+    const ext = filename.split('.').pop()?.toLowerCase()
+    if (ext === 'pdf') {
+      return <PictureAsPdfOutlinedIcon sx={{ color: '#DC2626', fontSize: 22 }} />
+    }
+    if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext || '')) {
+      return <ImageOutlinedIcon sx={{ color: '#2563EB', fontSize: 22 }} />
+    }
+    return <InsertDriveFileOutlinedIcon sx={{ color: '#4B5563', fontSize: 22 }} />
+  }
+
+  const handleAddFiles = (newFiles: FileList | File[]) => {
+    setFileError(null)
+    const validFiles: File[] = []
+    const existingNames = new Set(attachedFiles.map((f) => f.name.toLowerCase()))
+
+    for (let i = 0; i < newFiles.length; i++) {
+      const file = newFiles[i]
+      const ext = '.' + (file.name.split('.').pop()?.toLowerCase() || '')
+
+      if (FORBIDDEN_EXTENSIONS.includes(ext)) {
+        setFileError(`File "${file.name}" has a restricted format (${ext}). Executable scripts cannot be uploaded.`)
+        continue
+      }
+
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        setFileError(`File "${file.name}" (${formatFileSize(file.size)}) exceeds the 15MB size limit.`)
+        continue
+      }
+
+      if (existingNames.has(file.name.toLowerCase())) {
+        continue
+      }
+
+      validFiles.push(file)
+      existingNames.add(file.name.toLowerCase())
+    }
+
+    if (validFiles.length > 0) {
+      setAttachedFiles((prev) => [...prev, ...validFiles])
+    }
+  }
+
+  const handleRemoveFile = (indexToRemove: number) => {
+    setAttachedFiles((prev) => prev.filter((_, idx) => idx !== indexToRemove))
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleAddFiles(e.dataTransfer.files)
+    }
+  }
 
   // Fix suggestions state ("Fixes that worked before")
   const [suggestions, setSuggestions] = useState<SuggestedFix[]>([])
@@ -240,8 +329,27 @@ export default function CreateTicketPage() {
         return
       }
 
-      setCreatedTicket(res.data.ticket || res.data)
+      const created = res.data.ticket || res.data
+      const newTicketId = created.id
+
+      // Upload any attached documents
+      if (newTicketId && attachedFiles.length > 0) {
+        setUploadingFiles(true)
+        try {
+          const uploadRes = await attachmentApi.upload(newTicketId, attachedFiles)
+          if (uploadRes.data?.attachments) {
+            created.attachments = uploadRes.data.attachments
+          }
+        } catch (uploadErr) {
+          console.error('Error uploading attachments:', uploadErr)
+        } finally {
+          setUploadingFiles(false)
+        }
+      }
+
+      setCreatedTicket(created)
       setSuccessDialogOpen(true)
+      setAttachedFiles([])
     } catch (err) {
       console.error('Error submitting ticket:', err)
       alert('Failed to submit ticket. Please try again.')
@@ -384,6 +492,136 @@ export default function CreateTicketPage() {
               placeholder="Please provide details about the issue, including error messages, steps to reproduce, or impacted systems..."
               variant="outlined"
             />
+
+            {/* Supporting Documents & Attachments Section */}
+            <Box>
+              <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                <Box display="flex" alignItems="center" gap={1}>
+                  <AttachFileIcon sx={{ color: 'primary.main', fontSize: 20 }} />
+                  <Typography variant="subtitle2" fontWeight={700} color="text.primary">
+                    Attach Documents & Screenshots
+                  </Typography>
+                </Box>
+                <Typography variant="caption" color="text.secondary">
+                  Optional • PDF, Word, Excel, Logs, PNG, JPG (up to 15MB each)
+                </Typography>
+              </Box>
+
+              {/* Hidden File Input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  if (e.target.files && e.target.files.length > 0) {
+                    handleAddFiles(e.target.files)
+                    e.target.value = ''
+                  }
+                }}
+              />
+
+              {/* Drag & Drop Upload Zone */}
+              <Paper
+                variant="outlined"
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                sx={{
+                  p: 2.5,
+                  textAlign: 'center',
+                  borderStyle: 'dashed',
+                  borderWidth: 2,
+                  borderColor: isDragging ? theme.palette.primary.main : theme.palette.divider,
+                  bgcolor: isDragging
+                    ? theme.palette.mode === 'light' ? '#EFF6FF' : '#1E293B'
+                    : theme.palette.mode === 'light' ? '#F8FAFC' : '#0B132B',
+                  borderRadius: 2,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease-in-out',
+                  '&:hover': {
+                    borderColor: theme.palette.primary.main,
+                    bgcolor: theme.palette.mode === 'light' ? '#F1F5F9' : '#1E293B',
+                  },
+                }}
+              >
+                <CloudUploadOutlinedIcon sx={{ fontSize: 34, color: 'primary.main', mb: 0.5 }} />
+                <Typography variant="body2" fontWeight={700} color="text.primary">
+                  Click to browse or drag and drop files here
+                </Typography>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                  Attach screenshots, error logs, or relevant documents to expedite ticket resolution
+                </Typography>
+              </Paper>
+
+              {/* File Error Alert */}
+              {fileError && (
+                <Alert severity="error" onClose={() => setFileError(null)} sx={{ mt: 1.5, borderRadius: 2 }}>
+                  {fileError}
+                </Alert>
+              )}
+
+              {/* Selected Files List */}
+              {attachedFiles.length > 0 && (
+                <Box mt={1.5}>
+                  <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                    <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                      Files to Attach ({attachedFiles.length})
+                    </Typography>
+                    <Button
+                      size="small"
+                      color="inherit"
+                      onClick={() => setAttachedFiles([])}
+                      sx={{ fontSize: '0.72rem', textTransform: 'none', py: 0 }}
+                    >
+                      Clear all
+                    </Button>
+                  </Box>
+                  <Stack spacing={1}>
+                    {attachedFiles.map((file, idx) => (
+                      <Paper
+                        key={`${file.name}-${idx}`}
+                        elevation={0}
+                        sx={{
+                          p: 1.2,
+                          px: 1.8,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          borderRadius: 2,
+                          border: `1px solid ${theme.palette.divider}`,
+                          bgcolor: theme.palette.mode === 'light' ? '#FFFFFF' : '#1E293B',
+                        }}
+                      >
+                        <Box display="flex" alignItems="center" gap={1.5} sx={{ minWidth: 0, overflow: 'hidden' }}>
+                          {getFileIcon(file.name)}
+                          <Box sx={{ minWidth: 0 }}>
+                            <Typography variant="body2" fontWeight={600} noWrap sx={{ maxWidth: { xs: 200, sm: 380 } }}>
+                              {file.name}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {formatFileSize(file.size)}
+                            </Typography>
+                          </Box>
+                        </Box>
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleRemoveFile(idx)
+                          }}
+                          aria-label="remove attachment"
+                        >
+                          <CloseIcon fontSize="small" />
+                        </IconButton>
+                      </Paper>
+                    ))}
+                  </Stack>
+                </Box>
+              )}
+            </Box>
 
             {inlineMatch && (
               <Alert severity="info" sx={{ borderRadius: 2 }}>
@@ -535,7 +773,7 @@ export default function CreateTicketPage() {
                 color="inherit"
                 onClick={() => navigate('/tickets')}
                 startIcon={<CancelIcon />}
-                disabled={submitting}
+                disabled={submitting || uploadingFiles}
                 sx={{ px: 3, py: 1, fontWeight: 700 }}
               >
                 Cancel
@@ -543,7 +781,7 @@ export default function CreateTicketPage() {
                 <Button
                   type="submit"
                   variant="contained"
-                  disabled={submitting}
+                  disabled={submitting || uploadingFiles}
                   startIcon={<SendIcon />}
                   sx={{
                     px: 4,
@@ -553,7 +791,7 @@ export default function CreateTicketPage() {
                     '&:hover': { bgcolor: '#1D4ED8' },
                   }}
                 >
-                  {submitting ? 'Submitting...' : 'Submit Ticket'}
+                  {uploadingFiles ? 'Uploading Attachments...' : submitting ? 'Submitting...' : 'Submit Ticket'}
                 </Button>
             </Box>
           </Stack>
@@ -661,6 +899,37 @@ export default function CreateTicketPage() {
                     </Typography>
                   </Box>
                 </Box>
+
+                {createdTicket.attachments && createdTicket.attachments.length > 0 && (
+                  <>
+                    <Divider light />
+                    <Box>
+                      <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
+                        <Typography variant="body2" color="text.secondary" fontWeight={600}>
+                          Attached Documents
+                        </Typography>
+                        <Chip
+                          label={`${createdTicket.attachments.length} attached`}
+                          size="small"
+                          color="info"
+                          sx={{ fontWeight: 700, height: 22 }}
+                        />
+                      </Box>
+                      <Stack spacing={0.5} mt={0.5}>
+                        {createdTicket.attachments.map((att: any) => (
+                          <Typography
+                            key={att.id || att.filename}
+                            variant="caption"
+                            color="text.primary"
+                            sx={{ display: 'flex', alignItems: 'center', gap: 0.5, wordBreak: 'break-all' }}
+                          >
+                            • {att.filename} ({att.formatted_size || `${(att.file_size / 1024).toFixed(1)} KB`})
+                          </Typography>
+                        ))}
+                      </Stack>
+                    </Box>
+                  </>
+                )}
               </Stack>
             </Paper>
           </DialogContent>

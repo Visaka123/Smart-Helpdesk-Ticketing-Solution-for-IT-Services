@@ -56,6 +56,9 @@ class Ticket(Base):
     # Requesters relationship (1 master ticket can have multiple linked requesters)
     requesters = relationship("TicketRequester", back_populates="ticket", cascade="all, delete-orphan")
     
+    # Attachments relationship
+    attachments = relationship("TicketAttachment", back_populates="ticket", cascade="all, delete-orphan")
+    
     # Satisfaction rating & feedback
     satisfaction_rating = Column(Integer, nullable=True)  # 1 to 5
     satisfaction_feedback = Column(Text, nullable=True)

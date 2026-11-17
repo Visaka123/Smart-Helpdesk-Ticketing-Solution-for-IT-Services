@@ -15,7 +15,26 @@ import type {
   SuggestedFix,
   SuggestionFeedbackPayload,
   DeflectionAnalytics,
+  TicketAttachment,
 } from '../types'
+
+export const attachmentApi = {
+  upload: (ticketId: number, files: File[]) => {
+    const formData = new FormData()
+    files.forEach((f) => formData.append('files', f))
+    return apiClient.post<{ message: string; attachments: TicketAttachment[] }>(
+      `/ticket/${ticketId}/attachments`,
+      formData,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      }
+    )
+  },
+  getByTicket: (ticketId: number) =>
+    apiClient.get<TicketAttachment[]>(`/ticket/${ticketId}/attachments`),
+  delete: (attachmentId: number) =>
+    apiClient.delete(`/ticket/attachments/${attachmentId}`),
+}
 
 export const authApi = {
   login: (email: string, password: string) =>

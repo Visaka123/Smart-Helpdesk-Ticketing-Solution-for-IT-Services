@@ -10,11 +10,14 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz'
 import PersonIcon from '@mui/icons-material/Person'
 import HistoryIcon from '@mui/icons-material/History'
+import AttachFileIcon from '@mui/icons-material/AttachFile'
+import DownloadIcon from '@mui/icons-material/Download'
+import DescriptionIcon from '@mui/icons-material/Description'
 import axios from 'axios'
-import { availabilityApi } from '../api/services'
+import { availabilityApi, attachmentApi } from '../api/services'
 import { PriorityBadge, StatusBadge, SLABadge } from '../components/ui/SemanticBadges'
 import { AvailabilityBadge, getAvailStatus } from '../components/ui/AvailabilityBadge'
-import type { AssignmentLogEntry, AgentAvailability } from '../types'
+import type { AssignmentLogEntry, AgentAvailability, TicketAttachment } from '../types'
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? ''
 
@@ -44,6 +47,7 @@ export default function TicketDetailPage() {
   const [ticket, setTicket] = useState<any>(null)
   const [logs, setLogs] = useState<AssignmentLogEntry[]>([])
   const [agents, setAgents] = useState<AgentAvailability[]>([])
+  const [attachments, setAttachments] = useState<TicketAttachment[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -74,14 +78,16 @@ export default function TicketDetailPage() {
           headers['X-User-Name'] = u.name
         } catch {}
       }
-      const [tRes, lRes] = await Promise.all([
+      const [tRes, lRes, aRes] = await Promise.all([
         axios.get(`${API_BASE}/ticket/all`, { headers }),
         availabilityApi.getAssignmentLog(ticketId),
+        attachmentApi.getByTicket(ticketId).catch(() => ({ data: [] })),
       ])
       const found = Array.isArray(tRes.data) ? tRes.data.find((t: any) => t.id === ticketId) : null
       if (!found) { setError('Ticket not found.'); return }
       setTicket(found)
       setLogs(Array.isArray(lRes.data) ? lRes.data : [])
+      setAttachments(Array.isArray(aRes.data) ? aRes.data : [])
     } catch (e: any) {
       setError(e?.response?.data?.detail || 'Failed to load ticket.')
     } finally {
@@ -192,6 +198,59 @@ export default function TicketDetailPage() {
                   </Typography>
                 )}
               </Box>
+
+              {/* Attachments */}
+              {attachments.length > 0 && (
+                <Box mt={2.5}>
+                  <Box display="flex" alignItems="center" gap={0.8} mb={1}>
+                    <AttachFileIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                    <Typography variant="caption" fontWeight={700} color="text.secondary">
+                      ATTACHED DOCUMENTS ({attachments.length}):
+                    </Typography>
+                  </Box>
+                  <Grid container spacing={1.5}>
+                    {attachments.map((att) => (
+                      <Grid item xs={12} sm={6} key={att.id}>
+                        <Paper
+                          variant="outlined"
+                          sx={{
+                            p: 1.2,
+                            px: 1.5,
+                            borderRadius: 2,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: 1,
+                          }}
+                        >
+                          <Box display="flex" alignItems="center" gap={1} sx={{ minWidth: 0 }}>
+                            <DescriptionIcon sx={{ color: '#2563EB', fontSize: 20 }} />
+                            <Box sx={{ minWidth: 0 }}>
+                              <Typography variant="body2" fontWeight={600} noWrap sx={{ maxWidth: { xs: 140, sm: 200 } }}>
+                                {att.filename}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {att.formatted_size || `${(att.file_size / 1024).toFixed(1)} KB`}
+                              </Typography>
+                            </Box>
+                          </Box>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            href={`${API_BASE}${att.download_url}`}
+                            target="_blank"
+                            download
+                            startIcon={<DownloadIcon style={{ fontSize: 13 }} />}
+                            sx={{ textTransform: 'none', fontSize: '0.72rem', px: 1.2, py: 0.3, flexShrink: 0 }}
+                          >
+                            Download
+                          </Button>
+                        </Paper>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </Box>
+              )}
             </CardContent>
           </Card>
         </Grid>

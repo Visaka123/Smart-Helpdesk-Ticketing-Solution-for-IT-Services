@@ -12,6 +12,18 @@ export interface AuthState {
   error: string | null
 }
 
+export interface TicketAttachment {
+  id: number
+  ticket_id: number
+  filename: string
+  file_size: number
+  formatted_size?: string
+  content_type?: string
+  uploaded_by?: string
+  uploaded_at: string
+  download_url: string
+}
+
 export interface Ticket {
   id: any
   title: string
@@ -34,6 +46,8 @@ export interface Ticket {
   requester_name?: string
   routing_confidence?: number
   suggestions_tried?: string
+  attachments?: TicketAttachment[]
+  attachment_count?: number
 }
 
 export interface SuggestedFix {

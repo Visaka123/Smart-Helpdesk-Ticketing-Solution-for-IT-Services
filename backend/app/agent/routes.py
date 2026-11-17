@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 
 from app.database.database import SessionLocal
-from app.models import Ticket, TicketRequester, TicketComment, SLAEscalationLog, Team, User, DuplicateFeedbackLog
+from app.models import Ticket, TicketRequester, TicketComment, SLAEscalationLog, Team, User, DuplicateFeedbackLog, TicketAttachment
 from app.models.availability import AgentLeave
 from app.availability.service import _is_on_leave, _is_on_shift, _open_ticket_count
 from app.auth.rbac import get_current_user_from_headers
@@ -285,6 +285,26 @@ def get_ticket_detail(ticket_id: int, request: Request):
     except Exception as e:
         print(f"[WARN] Error fetching suggested KB articles in detail endpoint: {e}")
 
+    # Query ticket attachments
+    attachments = (
+        db.query(TicketAttachment)
+        .filter(TicketAttachment.ticket_id == ticket_id)
+        .order_by(TicketAttachment.created_at.asc())
+        .all()
+    )
+    attachment_list = [
+        {
+            "id": a.id,
+            "filename": a.original_filename,
+            "file_size": a.file_size,
+            "content_type": a.content_type,
+            "uploaded_by": a.uploaded_by,
+            "uploaded_at": str(a.created_at),
+            "download_url": f"/ticket/attachments/{a.id}/download",
+        }
+        for a in attachments
+    ]
+
     data = {
         "id": ticket.id,
         "title": ticket.title,
@@ -311,6 +331,7 @@ def get_ticket_detail(ticket_id: int, request: Request):
         "comments": comment_list,
         "similar_tickets": similar_tickets,
         "suggested_kb_articles": suggested_kb_articles,
+        "attachments": attachment_list,
     }
 
     db.close()

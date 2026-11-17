@@ -1,11 +1,15 @@
 import json
+import os
+import re
+import uuid
 from datetime import datetime
-from fastapi import APIRouter, HTTPException, Depends, Query, Request
+from fastapi import APIRouter, HTTPException, Depends, Query, Request, File, UploadFile
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 
 from app.database.database import SessionLocal
-from app.models import Ticket, TicketRequester, TicketComment, User, SLAEscalationLog, Team
+from app.models import Ticket, TicketRequester, TicketComment, User, SLAEscalationLog, Team, TicketAttachment
 from app.routing.service import predict_team_ml, predict_ticket_category, post_process_category, route_team_with_llm, classify_and_route_ticket
 from app.priority.service import predict_priority_enhanced
 from app.sla.service import calculate_sla_due_at, audit_and_trigger_sla_escalations
@@ -21,6 +25,23 @@ from app.suggestions.service import (
 from app.tickets.service import clean_ticket_title
 
 router = APIRouter()
+
+UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "uploads", "attachments")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+MAX_ATTACHMENT_SIZE = 15 * 1024 * 1024  # 15 MB
+DANGEROUS_EXTENSIONS = {
+    ".exe", ".bat", ".cmd", ".sh", ".msi", ".vbs", ".js", ".vbe",
+    ".com", ".scr", ".pif", ".bin", ".cpl", ".gadget", ".hta", ".wsf"
+}
+
+def format_file_size(size_bytes: int) -> str:
+    if size_bytes < 1024:
+        return f"{size_bytes} B"
+    elif size_bytes < 1024 * 1024:
+        return f"{round(size_bytes / 1024, 1)} KB"
+    else:
+        return f"{round(size_bytes / (1024 * 1024), 2)} MB"
 
 class TicketCreateRequest(BaseModel):
     title: str
@@ -756,6 +777,22 @@ def get_employee_ticket_detail(ticket_id: int, request: Request):
     except Exception as e:
         print(f"[WARN] Error fetching public KB articles for employee view: {e}")
 
+    # Fetch attachments
+    attachments = db.query(TicketAttachment).filter(TicketAttachment.ticket_id == ticket_id).order_by(TicketAttachment.created_at.asc()).all()
+    attachment_list = [
+        {
+            "id": a.id,
+            "filename": a.original_filename,
+            "file_size": a.file_size,
+            "formatted_size": format_file_size(a.file_size),
+            "content_type": a.content_type,
+            "uploaded_by": a.uploaded_by,
+            "uploaded_at": str(a.created_at),
+            "download_url": f"/ticket/attachments/{a.id}/download",
+        }
+        for a in attachments
+    ]
+
     # Return sanitized user-facing data (HIDE ALL INTERNAL FIELDS)
     data = {
         "id": ticket.id,
@@ -771,6 +808,7 @@ def get_employee_ticket_detail(ticket_id: int, request: Request):
         "satisfaction_feedback": ticket.satisfaction_feedback,
         "comments": comment_list,
         "suggested_kb_articles": suggested_kb_articles,
+        "attachments": attachment_list,
     }
 
     db.close()
@@ -948,3 +986,213 @@ def get_ticket_stats(include_demo: bool = True):
         "tickets_by_priority": by_priority,
         "tickets_by_team": by_team,
     }
+
+
+# ── Document Attachment Endpoints ─────────────────────────────────────
+
+@router.post("/{ticket_id}/attachments")
+async def upload_ticket_attachments(
+    ticket_id: int,
+    request: Request,
+    files: List[UploadFile] = File(...),
+):
+    """
+    Upload and attach one or multiple documents to a ticket.
+    Validates file sizes, extension sanitization, and stores files safely.
+    """
+    db = SessionLocal()
+    ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+    if not ticket:
+        db.close()
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
+    user = get_current_user_from_headers(request, db)
+    uploader_name = (
+        request.headers.get("X-User-Name")
+        or (user.name if user else None)
+        or ticket.requester_name
+        or "Employee"
+    )
+    uploader_role = (
+        request.headers.get("X-User-Role")
+        or (user.role if user else None)
+        or "employee"
+    )
+
+    saved_attachments = []
+
+    for file in files:
+        if not file.filename:
+            continue
+
+        raw_filename = os.path.basename(file.filename)
+        ext = os.path.splitext(raw_filename)[1].lower()
+
+        if ext in DANGEROUS_EXTENSIONS:
+            db.close()
+            raise HTTPException(
+                status_code=400,
+                detail=f"File '{raw_filename}' has a forbidden extension ({ext}). Executables and script files are not allowed."
+            )
+
+        content = await file.read()
+        file_size = len(content)
+
+        if file_size > MAX_ATTACHMENT_SIZE:
+            db.close()
+            raise HTTPException(
+                status_code=400,
+                detail=f"File '{raw_filename}' ({format_file_size(file_size)}) exceeds the maximum allowed limit of 15MB."
+            )
+
+        clean_base = re.sub(r'[^a-zA-Z0-9_.-]', '_', raw_filename)
+        stored_filename = f"{ticket_id}_{uuid.uuid4().hex[:8]}_{clean_base}"
+        target_path = os.path.join(UPLOAD_DIR, stored_filename)
+
+        with open(target_path, "wb") as f:
+            f.write(content)
+
+        att = TicketAttachment(
+            ticket_id=ticket.id,
+            filename=stored_filename,
+            original_filename=raw_filename,
+            file_size=file_size,
+            content_type=file.content_type or "application/octet-stream",
+            file_path=stored_filename,
+            uploaded_by=uploader_name,
+        )
+        db.add(att)
+        saved_attachments.append(att)
+
+        # Audit comment on ticket timeline
+        comment = TicketComment(
+            ticket_id=ticket.id,
+            user_id=user.id if user else None,
+            author_name=uploader_name,
+            author_role=uploader_role,
+            content=f"Attached document: {raw_filename} ({format_file_size(file_size)}).",
+            is_internal=False,
+        )
+        db.add(comment)
+
+    db.commit()
+
+    for a in saved_attachments:
+        db.refresh(a)
+
+    res = [
+        {
+            "id": a.id,
+            "ticket_id": a.ticket_id,
+            "filename": a.original_filename,
+            "file_size": a.file_size,
+            "formatted_size": format_file_size(a.file_size),
+            "content_type": a.content_type,
+            "uploaded_by": a.uploaded_by,
+            "uploaded_at": str(a.created_at),
+            "download_url": f"/ticket/attachments/{a.id}/download",
+        }
+        for a in saved_attachments
+    ]
+
+    db.close()
+    return {
+        "message": f"Successfully attached {len(res)} document(s).",
+        "attachments": res,
+    }
+
+
+@router.get("/{ticket_id}/attachments")
+def get_ticket_attachments(ticket_id: int):
+    """List all attachments associated with a given ticket."""
+    db = SessionLocal()
+    ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+    if not ticket:
+        db.close()
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
+    attachments = (
+        db.query(TicketAttachment)
+        .filter(TicketAttachment.ticket_id == ticket_id)
+        .order_by(TicketAttachment.created_at.asc())
+        .all()
+    )
+
+    res = [
+        {
+            "id": a.id,
+            "ticket_id": a.ticket_id,
+            "filename": a.original_filename,
+            "file_size": a.file_size,
+            "formatted_size": format_file_size(a.file_size),
+            "content_type": a.content_type,
+            "uploaded_by": a.uploaded_by,
+            "uploaded_at": str(a.created_at),
+            "download_url": f"/ticket/attachments/{a.id}/download",
+        }
+        for a in attachments
+    ]
+    db.close()
+    return res
+
+
+@router.get("/attachments/{attachment_id}/download")
+def download_ticket_attachment(attachment_id: int):
+    """Download an attached document by attachment ID."""
+    db = SessionLocal()
+    att = db.query(TicketAttachment).filter(TicketAttachment.id == attachment_id).first()
+    if not att:
+        db.close()
+        raise HTTPException(status_code=404, detail="Attachment record not found")
+
+    file_path = os.path.join(UPLOAD_DIR, att.file_path)
+    if not os.path.exists(file_path):
+        db.close()
+        raise HTTPException(status_code=404, detail="Attachment file not found on server disk")
+
+    db.close()
+    return FileResponse(
+        path=file_path,
+        filename=att.original_filename,
+        media_type=att.content_type or "application/octet-stream",
+        headers={"Content-Disposition": f'attachment; filename="{att.original_filename}"'},
+    )
+
+
+@router.delete("/attachments/{attachment_id}")
+def delete_ticket_attachment(attachment_id: int, request: Request):
+    """Delete an attachment from database and disk."""
+    db = SessionLocal()
+    att = db.query(TicketAttachment).filter(TicketAttachment.id == attachment_id).first()
+    if not att:
+        db.close()
+        raise HTTPException(status_code=404, detail="Attachment not found")
+
+    user = get_current_user_from_headers(request, db)
+    actor_name = request.headers.get("X-User-Name") or (user.name if user else "User")
+
+    file_path = os.path.join(UPLOAD_DIR, att.file_path)
+    if os.path.exists(file_path):
+        try:
+            os.remove(file_path)
+        except Exception as e:
+            print(f"[WARN] Failed to delete file from disk: {e}")
+
+    orig_name = att.original_filename
+    t_id = att.ticket_id
+
+    db.delete(att)
+
+    comment = TicketComment(
+        ticket_id=t_id,
+        user_id=user.id if user else None,
+        author_name=actor_name,
+        author_role=user.role if user else "user",
+        content=f"Removed attached document: {orig_name}.",
+        is_internal=False,
+    )
+    db.add(comment)
+
+    db.commit()
+    db.close()
+    return {"message": f"Attachment '{orig_name}' deleted successfully."}
