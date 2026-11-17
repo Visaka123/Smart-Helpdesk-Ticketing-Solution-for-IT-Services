@@ -18,6 +18,7 @@ from app.suggestions.service import (
     record_suggestion_feedback,
     get_deflection_analytics,
 )
+from app.tickets.service import clean_ticket_title
 
 router = APIRouter()
 
@@ -259,6 +260,7 @@ def deflection_analytics_endpoint():
 
 @router.post("/create")
 def create_ticket(req: TicketCreateRequest, request: Request):
+    req.title = clean_ticket_title(req.title)
     print(f"\n=======================================================")
     print(f"[TICKET CREATE ENDPOINT INVOCATION] Received Request:")
     print(f"  Title     : '{req.title}'")

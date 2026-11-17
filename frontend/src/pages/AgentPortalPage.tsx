@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import {
   Box,
@@ -39,8 +39,10 @@ import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import HistoryEduIcon from '@mui/icons-material/HistoryEdu'
 import axios from 'axios'
-import { fixesApi } from '../api/services'
-import type { SuggestedFix } from '../types'
+import { fixesApi, availabilityApi } from '../api/services'
+import type { SuggestedFix, AgentAvailability } from '../types'
+import { STATUS_OPTIONS, normalizeStatus, getStatusOptions } from '../utils/status'
+import { AvailabilityDot, getAvailStatus } from '../components/ui/AvailabilityBadge'
 
 import { PriorityBadge, SLABadge, StatusBadge } from '../components/ui/SemanticBadges'
 import { ITSMTimeline } from '../components/ui/ITSMTimeline'
@@ -95,6 +97,11 @@ export default function AgentPortalPage() {
 
   // Agent Workspace UI state
   const [showResolveForm, setShowResolveForm] = useState(false)
+  const [rosterAgents, setRosterAgents] = useState<AgentAvailability[]>([])
+  const [reassignDialogOpen, setReassignDialogOpen] = useState(false)
+  const [pendingEngineer, setPendingEngineer] = useState('')
+  const [reassignReason, setReassignReason] = useState('')
+  const [submittingReassign, setSubmittingReassign] = useState(false)
 
   // Inline Controls State
   const [currentPriority, setCurrentPriority] = useState('Medium')
@@ -111,32 +118,48 @@ export default function AgentPortalPage() {
   const [resolutionDetail, setResolutionDetail] = useState('')
   const [rootCause, setRootCause] = useState('User Error')
 
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('token')
+    const storedUser = localStorage.getItem('user')
+    const currentViewingAs = viewingAsAgent || localStorage.getItem('viewing_as_agent')
+    const isDemo = localStorage.getItem('demo_mode') === 'true'
+    const headers: any = {}
+    if (token) headers['Authorization'] = `Bearer ${token}`
+    if (currentViewingAs) {
+      headers['X-View-As-Agent'] = currentViewingAs
+      headers['X-Real-User-Role'] = 'manager'
+    }
+    if (isDemo) {
+      headers['X-Demo-Mode'] = 'true'
+    }
+    if (storedUser) {
+      try {
+        const u = JSON.parse(storedUser)
+        headers['X-User-Id'] = String(u.id)
+        headers['X-User-Role'] = u.role || 'agent'
+        headers['X-User-Email'] = u.email
+        headers['X-User-Name'] = u.name
+      } catch (e) {}
+    } else {
+      headers['X-User-Role'] = 'agent'
+    }
+    return headers
+  }
+
+  const fetchRosterAgents = async () => {
+    try {
+      const res = await availabilityApi.getAvailableNow()
+      if (Array.isArray(res.data)) {
+        setRosterAgents(res.data)
+      }
+    } catch (e) {
+      console.error('Error fetching available agents:', e)
+    }
+  }
+
   const fetchAgentQueue = async () => {
     try {
-      const token = localStorage.getItem('token')
-      const storedUser = localStorage.getItem('user')
-      const currentViewingAs = viewingAsAgent || localStorage.getItem('viewing_as_agent')
-      const isDemo = localStorage.getItem('demo_mode') === 'true'
-      const headers: any = {}
-      if (token) headers['Authorization'] = `Bearer ${token}`
-      if (currentViewingAs) {
-        headers['X-View-As-Agent'] = currentViewingAs
-        headers['X-Real-User-Role'] = 'manager'
-      }
-      if (isDemo) {
-        headers['X-Demo-Mode'] = 'true'
-      }
-      if (storedUser) {
-        try {
-          const u = JSON.parse(storedUser)
-          headers['X-User-Id'] = String(u.id)
-          headers['X-User-Role'] = u.role || 'agent'
-          headers['X-User-Email'] = u.email
-          headers['X-User-Name'] = u.name
-        } catch (e) {}
-      } else {
-        headers['X-User-Role'] = 'agent'
-      }
+      const headers = getAuthHeaders()
 
       const [qRes, sRes, mRes, statusRes] = await Promise.all([
         axios.get(`${API_BASE}/agent/queue`, { headers }),
@@ -156,7 +179,11 @@ export default function AgentPortalPage() {
 
   useEffect(() => {
     fetchAgentQueue()
-    const handleRefresh = () => fetchAgentQueue()
+    fetchRosterAgents()
+    const handleRefresh = () => {
+      fetchAgentQueue()
+      fetchRosterAgents()
+    }
     window.addEventListener('view_as_changed', handleRefresh)
     window.addEventListener('storage', handleRefresh)
     window.addEventListener('demo_mode_changed', handleRefresh)
@@ -173,19 +200,20 @@ export default function AgentPortalPage() {
     setRecommendations([])
     setWorkedFixes([])
     setLoadingWorkedFixes(true)
+    fetchRosterAgents()
 
     // 1. INSTANT MODAL OPEN (0ms blocking delay) using queue ticket data if available
     const existingInQueue = tickets.find((t) => t.id === id)
     if (existingInQueue) {
       setTicketDetail(existingInQueue)
       setCurrentPriority(existingInQueue.priority || 'Medium')
-      setCurrentStatus(existingInQueue.status || 'open')
+      setCurrentStatus(normalizeStatus(existingInQueue.status || 'open'))
       setCurrentTeam(existingInQueue.assigned_team || 'Unassigned/Triage')
       setAssignedEngineer(existingInQueue.assigned_agent_name || 'Sarah Agent')
       setResolutionSummary(existingInQueue.resolution_summary || '')
       setResolutionDetail(existingInQueue.resolution_detail || '')
       setRootCause(existingInQueue.root_cause || 'User Error')
-      if (existingInQueue.status === 'resolved' || existingInQueue.status === 'closed') {
+      if (normalizeStatus(existingInQueue.status) === 'resolved' || normalizeStatus(existingInQueue.status) === 'closed') {
         setShowResolveForm(true)
       }
       fixesApi
@@ -197,33 +225,20 @@ export default function AgentPortalPage() {
     setDetailOpen(true) // Open modal shell IMMEDIATELY!
 
     // 2. NON-BLOCKING ASYNC BACKGROUND DATA FETCHING
-    const token = localStorage.getItem('token')
-    const storedUser = localStorage.getItem('user')
-    const headers: any = {}
-    if (token) headers['Authorization'] = `Bearer ${token}`
-    if (storedUser) {
-      try {
-        const u = JSON.parse(storedUser)
-        headers['X-User-Id'] = String(u.id)
-        headers['X-User-Role'] = 'agent'
-        headers['X-User-Email'] = u.email
-      } catch (e) {}
-    } else {
-      headers['X-User-Role'] = 'agent'
-    }
+    const headers = getAuthHeaders()
 
     axios
       .get(`${API_BASE}/agent/detail/${id}`, { headers })
       .then((res) => {
         setTicketDetail(res.data)
         setCurrentPriority(res.data.priority || 'Medium')
-        setCurrentStatus(res.data.status || 'open')
+        setCurrentStatus(normalizeStatus(res.data.status || 'open'))
         setCurrentTeam(res.data.assigned_team || 'Unassigned/Triage')
         setAssignedEngineer(res.data.assigned_agent_name || 'Sarah Agent')
         setResolutionSummary(res.data.resolution_summary || '')
         setResolutionDetail(res.data.resolution_detail || '')
         setRootCause(res.data.root_cause || 'User Error')
-        if (res.data.status === 'resolved' || res.data.status === 'closed') {
+        if (normalizeStatus(res.data.status) === 'resolved' || normalizeStatus(res.data.status) === 'closed') {
           setShowResolveForm(true)
         }
 
@@ -290,36 +305,56 @@ export default function AgentPortalPage() {
   }
 
   const handleChangeStatus = async (newStatus: string) => {
-    if (!selectedTicketId || newStatus === currentStatus || submittingAction) return
-    setCurrentStatus(newStatus)
-    if (newStatus === 'resolved' || newStatus === 'closed') {
-      setShowResolveForm(true)
-    } else {
-      try {
-        setSubmittingAction(true)
-        await axios.post(`${API_BASE}/agent/change-status/${selectedTicketId}`, { new_status: newStatus })
-        openTicketDetail(selectedTicketId)
-        fetchAgentQueue()
-      } catch (e) {
-        console.error(e)
-      } finally {
-        setSubmittingAction(false)
-      }
-    }
-  }
+    if (!selectedTicketId || submittingAction) return
+    const norm = normalizeStatus(newStatus)
+    if (norm === normalizeStatus(currentStatus)) return
 
-  const handleAssignEngineer = async (agentName: string) => {
-    if (!selectedTicketId || agentName === assignedEngineer || submittingAction) return
+    if (norm === 'resolved') {
+      setShowResolveForm(true)
+      return
+    }
+
+    setCurrentStatus(norm)
+    if (norm === 'closed') {
+      setShowResolveForm(true)
+    }
+
     try {
       setSubmittingAction(true)
-      await axios.post(`${API_BASE}/agent/assign-engineer/${selectedTicketId}`, { agent_name: agentName })
-      setAssignedEngineer(agentName)
+      const headers = getAuthHeaders()
+      await axios.post(`${API_BASE}/agent/change-status/${selectedTicketId}`, { new_status: norm }, { headers })
+      setTicketDetail((prev: any) => (prev ? { ...prev, status: norm } : prev))
       openTicketDetail(selectedTicketId)
       fetchAgentQueue()
     } catch (e) {
       console.error(e)
     } finally {
       setSubmittingAction(false)
+    }
+  }
+
+  const handleConfirmReassign = async () => {
+    if (!selectedTicketId || !pendingEngineer || !reassignReason.trim() || submittingReassign) return
+    try {
+      setSubmittingReassign(true)
+      const headers = getAuthHeaders()
+      await axios.post(
+        `${API_BASE}/agent/assign-engineer/${selectedTicketId}`,
+        { agent_name: pendingEngineer, reason: reassignReason.trim() },
+        { headers }
+      )
+      setAssignedEngineer(pendingEngineer)
+      setTicketDetail((prev: any) => (prev ? { ...prev, assigned_agent_name: pendingEngineer } : prev))
+      setReassignDialogOpen(false)
+      setPendingEngineer('')
+      setReassignReason('')
+      openTicketDetail(selectedTicketId)
+      fetchAgentQueue()
+    } catch (e: any) {
+      console.error(e)
+      alert(e?.response?.data?.detail || 'Failed to reassign engineer.')
+    } finally {
+      setSubmittingReassign(false)
     }
   }
 
@@ -385,7 +420,40 @@ export default function AgentPortalPage() {
     }
   }
 
-  const isClosed = ticketDetail && ticketDetail.status === 'closed'
+  const storedUserRaw = localStorage.getItem('user')
+  let parsedRole = currentRole
+  try {
+    if (storedUserRaw) {
+      const u = JSON.parse(storedUserRaw)
+      if (u.role) parsedRole = u.role
+    }
+  } catch {}
+  const isManager = ['manager', 'admin', 'team_lead'].includes(currentRole || '') || ['manager', 'admin', 'team_lead'].includes(parsedRole || '')
+  const isClosed = normalizeStatus(currentStatus) === 'closed' || (ticketDetail && normalizeStatus(ticketDetail.status) === 'closed')
+
+  const engineerOptions = useMemo(() => {
+    const list = [...rosterAgents]
+    const curName = assignedEngineer || ticketDetail?.assigned_agent_name
+    if (curName && !list.some((a) => (a.name || (a as any).agent_name) === curName)) {
+      list.unshift({
+        id: -1,
+        name: curName,
+        agent_name: curName,
+        team: ticketDetail?.assigned_team || 'General Support',
+        timezone: 'Asia/Kolkata',
+        skills: '',
+        shift_end: null,
+        available: true,
+        on_shift: true,
+        on_call: false,
+        on_leave: false,
+        below_cap: true,
+        open_tickets: 0,
+        ticket_cap: 10,
+      } as any)
+    }
+    return list
+  }, [rosterAgents, assignedEngineer, ticketDetail?.assigned_agent_name, ticketDetail?.assigned_team])
 
   return (
     <Box>
@@ -595,7 +663,7 @@ export default function AgentPortalPage() {
                 <Typography variant="h5" fontWeight={800}>
                   Ticket #{ticketDetail.id}: {ticketDetail.title}
                 </Typography>
-                <StatusBadge status={ticketDetail.status} />
+                <StatusBadge status={currentStatus || ticketDetail.status} />
                 {isClosed && (
                   <Chip icon={<LockIcon style={{ fontSize: 14 }} />} label="Read-Only Workspace (Closed)" color="secondary" size="small" style={{ fontWeight: 700 }} />
                 )}
@@ -611,12 +679,16 @@ export default function AgentPortalPage() {
                 <Grid item xs={12} sm={3}>
                   <FormControl fullWidth size="small" disabled={isClosed}>
                     <InputLabel>Status</InputLabel>
-                    <Select value={currentStatus} label="Status" onChange={(e) => handleChangeStatus(e.target.value)}>
-                      <MenuItem value="open">Open</MenuItem>
-                      <MenuItem value="in_progress">In Progress</MenuItem>
-                      <MenuItem value="on_hold">On Hold</MenuItem>
-                      <MenuItem value="resolved">Resolved</MenuItem>
-                      <MenuItem value="closed">Closed</MenuItem>
+                    <Select
+                      value={normalizeStatus(currentStatus)}
+                      label="Status"
+                      onChange={(e) => handleChangeStatus(e.target.value)}
+                    >
+                      {getStatusOptions(currentStatus).map((opt) => (
+                        <MenuItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </MenuItem>
+                      ))}
                     </Select>
                   </FormControl>
                 </Grid>
@@ -647,15 +719,42 @@ export default function AgentPortalPage() {
                 </Grid>
 
                 <Grid item xs={12} sm={3}>
-                  <TextField
-                    label="Assigned Engineer"
-                    fullWidth
-                    size="small"
-                    disabled={isClosed}
-                    value={assignedEngineer}
-                    onChange={(e) => setAssignedEngineer(e.target.value)}
-                    onBlur={(e) => handleAssignEngineer(e.target.value)}
-                  />
+                  <FormControl fullWidth size="small" disabled={isClosed || !isManager}>
+                    <InputLabel>Assigned Engineer</InputLabel>
+                    <Select
+                      value={assignedEngineer || ticketDetail?.assigned_agent_name || ''}
+                      label="Assigned Engineer"
+                      onChange={(e) => {
+                        const newName = e.target.value
+                        if (newName && newName !== assignedEngineer) {
+                          setPendingEngineer(newName)
+                          setReassignReason('')
+                          setReassignDialogOpen(true)
+                        }
+                      }}
+                    >
+                      {engineerOptions.map((agent: any) => {
+                        const name = agent.name || agent.agent_name
+                        const avail = getAvailStatus(agent)
+                        let availLabel = 'Available'
+                        if (avail === 'on_leave') availLabel = 'On leave'
+                        else if (avail === 'off_shift') availLabel = 'Off shift'
+                        else if (avail === 'at_capacity' || avail === 'over_capacity') availLabel = 'At capacity'
+
+                        const isOnLeave = avail === 'on_leave'
+                        return (
+                          <MenuItem key={name} value={name} disabled={isOnLeave}>
+                            <Box display="flex" alignItems="center" gap={1}>
+                              <AvailabilityDot status={avail} />
+                              <Typography variant="body2" component="span">
+                                {name} ({availLabel})
+                              </Typography>
+                            </Box>
+                          </MenuItem>
+                        )
+                      })}
+                    </Select>
+                  </FormControl>
                 </Grid>
               </Grid>
             </Paper>
@@ -969,6 +1068,52 @@ export default function AgentPortalPage() {
           </DialogActions>
         </Dialog>
       )}
+
+      {/* Manager Reassignment Reason Dialog */}
+      <Dialog
+        open={reassignDialogOpen}
+        onClose={() => !submittingReassign && setReassignDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>Reassign Engineer</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Reassigning Ticket #{selectedTicketId} to <strong>{pendingEngineer}</strong>. A reason is required for assignment history.
+          </Typography>
+          <TextField
+            autoFocus
+            label="Reassignment Reason"
+            fullWidth
+            size="small"
+            required
+            multiline
+            rows={2}
+            value={reassignReason}
+            onChange={(e) => setReassignReason(e.target.value)}
+            placeholder="e.g. Specialized expertise, shift coverage, load rebalancing"
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => {
+              setReassignDialogOpen(false)
+              setPendingEngineer('')
+              setReassignReason('')
+            }}
+            disabled={submittingReassign}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            disabled={!reassignReason.trim() || submittingReassign}
+            onClick={handleConfirmReassign}
+          >
+            Confirm Reassign
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   )
 }

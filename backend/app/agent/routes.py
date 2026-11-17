@@ -54,6 +54,10 @@ def _get_audit_actor(request: Request, db, default_role="agent") -> tuple:
     caller = get_current_user_from_headers(request, db)
     if caller:
         return caller.name, caller.role, ""
+    header_name = request.headers.get("X-User-Name")
+    header_role = request.headers.get("X-User-Role")
+    if header_name:
+        return header_name, header_role or default_role, ""
     return "Support Agent", default_role, ""
 
 @router.post("/view-as")
@@ -86,6 +90,39 @@ class ChangeStatusRequest(BaseModel):
 
 class AssignEngineerRequest(BaseModel):
     agent_name: str
+    reason: Optional[str] = None
+
+STATUS_DISPLAY_MAP = {
+    "open": "Open",
+    "in_progress": "In Progress",
+    "pending_user": "Pending User",
+    "resolved": "Resolved",
+    "closed": "Closed",
+}
+
+def normalize_status(raw_status: Optional[str]) -> str:
+    if not raw_status:
+        return "open"
+    s = raw_status.strip().lower().replace(" ", "_").replace("-", "_")
+    if s in ("open", "new", "assigned", "reopened"):
+        return "open"
+    if s in ("in_progress", "inprogress", "working"):
+        return "in_progress"
+    if s in ("pending_user", "pending", "on_hold", "onhold", "waiting", "waiting_for_user"):
+        return "pending_user"
+    if s == "resolved":
+        return "resolved"
+    if s in ("closed", "cancelled"):
+        return "closed"
+    return s
+
+def get_status_display(status_val: Optional[str]) -> str:
+    norm = normalize_status(status_val)
+    if norm in STATUS_DISPLAY_MAP:
+        return STATUS_DISPLAY_MAP[norm]
+    if not status_val:
+        return "Open"
+    return status_val.replace("_", " ").title()
 
 @router.get("/queue")
 def get_agent_queue(
@@ -354,18 +391,24 @@ def change_status_endpoint(ticket_id: int, req: ChangeStatusRequest, request: Re
         raise HTTPException(status_code=404, detail="Ticket not found")
 
     old_s = ticket.status
-    if old_s == req.new_status:
+    new_canonical = normalize_status(req.new_status)
+    old_canonical = normalize_status(old_s)
+    if old_canonical == new_canonical and old_s == req.new_status:
         db.close()
         return {"message": f"Status is already '{req.new_status}'"}
 
+    old_display = get_status_display(old_s)
+    new_display = get_status_display(new_canonical)
+
     actor_name, actor_role, audit_ctx = _get_audit_actor(request, db, default_role="agent")
-    comment_author = f"{actor_name} ({audit_ctx})" if audit_ctx else (actor_name or "Support Agent")
-    comment_content = f"Changed status from '{old_s}' to '{req.new_status}'."
+    audit_actor = actor_name or "Support Agent"
+    comment_author = f"{actor_name} ({audit_ctx})" if audit_ctx else audit_actor
+    comment_content = f"Status changed from {old_display} to {new_display} by {audit_actor}."
     if audit_ctx:
         comment_content += f"\n[Audit: {actor_name}, context: {audit_ctx}]"
 
-    ticket.status = req.new_status
-    if req.new_status in ["resolved", "closed"] and not ticket.resolved_at:
+    ticket.status = new_canonical
+    if new_canonical in ["resolved", "closed"] and not ticket.resolved_at:
         ticket.resolved_at = datetime.now()
 
     comment = TicketComment(
@@ -378,7 +421,7 @@ def change_status_endpoint(ticket_id: int, req: ChangeStatusRequest, request: Re
     db.add(comment)
     db.commit()
     db.close()
-    return {"message": f"Status changed to {req.new_status}"}
+    return {"message": f"Status changed to {new_canonical}"}
 
 @router.post("/assign-engineer/{ticket_id}")
 def assign_engineer_endpoint(ticket_id: int, req: AssignEngineerRequest, request: Request = None):
@@ -399,12 +442,27 @@ def assign_engineer_endpoint(ticket_id: int, req: AssignEngineerRequest, request
         return {"message": f"Engineer '{req.agent_name}' is already assigned."}
 
     actor_name, actor_role, audit_ctx = _get_audit_actor(request, db, default_role="agent")
-    comment_author = f"{actor_name} ({audit_ctx})" if audit_ctx else (actor_name or "Support Agent")
-    comment_content = f"Assigned engineer '{req.agent_name}' to Ticket #{ticket_id}."
+    audit_actor = actor_name or "Support Agent"
+    comment_author = f"{actor_name} ({audit_ctx})" if audit_ctx else audit_actor
+    reason_text = f" (Reason: {req.reason})" if req.reason else ""
+    comment_content = f"Assigned engineer '{req.agent_name}' to Ticket #{ticket_id}{reason_text}."
     if audit_ctx:
         comment_content += f"\n[Audit: {actor_name}, context: {audit_ctx}]"
 
     ticket.assigned_agent_name = req.agent_name
+    if target_user:
+        ticket.assigned_agent_id = target_user.id
+
+    from app.models.availability import AssignmentLog
+    db.add(AssignmentLog(
+        ticket_id=ticket_id,
+        assigned_agent_id=target_user.id if target_user else None,
+        assigned_agent_name=req.agent_name,
+        candidates_json="[]",
+        reason=comment_content,
+        override_by=audit_actor,
+    ))
+
     comment = TicketComment(
         ticket_id=ticket_id,
         author_name=comment_author,

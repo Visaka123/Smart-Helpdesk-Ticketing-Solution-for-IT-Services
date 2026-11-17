@@ -3,6 +3,7 @@ import { Chip } from '@mui/material'
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'
 import AccessTimeIcon from '@mui/icons-material/AccessTime'
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline'
+import { normalizeStatus } from '../../utils/status'
 
 interface PriorityBadgeProps {
   priority: string
@@ -101,7 +102,7 @@ interface StatusBadgeProps {
 }
 
 export function StatusBadge({ status, size = 'small' }: StatusBadgeProps) {
-  const s = (status || 'open').toLowerCase()
+  const s = normalizeStatus(status)
   if (s === 'resolved' || s === 'closed') {
     return (
       <Chip
@@ -111,12 +112,21 @@ export function StatusBadge({ status, size = 'small' }: StatusBadgeProps) {
       />
     )
   }
-  if (s === 'in_progress' || s === 'in-progress') {
+  if (s === 'in_progress') {
     return (
       <Chip
         label="IN PROGRESS"
         size={size}
         style={{ backgroundColor: '#E0E7FF', color: '#4338CA', border: '1px solid #C7D2FE', fontWeight: 600 }}
+      />
+    )
+  }
+  if (s === 'pending_user') {
+    return (
+      <Chip
+        label="PENDING USER"
+        size={size}
+        style={{ backgroundColor: '#FEF3C7', color: '#B45309', border: '1px solid #FDE68A', fontWeight: 600 }}
       />
     )
   }

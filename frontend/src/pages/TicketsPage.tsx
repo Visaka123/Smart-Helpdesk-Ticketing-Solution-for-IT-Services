@@ -13,6 +13,7 @@ import axios from 'axios'
 
 import { PriorityBadge, StatusBadge, SLABadge } from '../components/ui/SemanticBadges'
 import EmployeeTicketDetailsModal from '../components/EmployeeTicketDetailsModal'
+import { STATUS_OPTIONS, normalizeStatus } from '../utils/status'
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? ''
 
@@ -108,7 +109,7 @@ export default function TicketsPage() {
       const q = search.toLowerCase()
       data = data.filter((t) => t.title?.toLowerCase().includes(q) || t.description?.toLowerCase().includes(q))
     }
-    if (statusFilter !== 'all') data = data.filter((t) => t.status?.toLowerCase() === statusFilter)
+    if (statusFilter !== 'all') data = data.filter((t) => normalizeStatus(t.status) === statusFilter)
     if (priorityFilter !== 'all') {
       data = data.filter((t) => (t.priority || '').toLowerCase() === priorityFilter)
     }
@@ -183,10 +184,9 @@ export default function TicketsPage() {
               <InputLabel>Status</InputLabel>
               <Select value={statusFilter} label="Status" onChange={(e) => { setStatusFilter(e.target.value); setPage(0) }}>
                 <MenuItem value="all">All Statuses</MenuItem>
-                <MenuItem value="open">Open</MenuItem>
-                <MenuItem value="in_progress">In Progress</MenuItem>
-                <MenuItem value="resolved">Resolved</MenuItem>
-                <MenuItem value="closed">Closed</MenuItem>
+                {STATUS_OPTIONS.map((opt) => (
+                  <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+                ))}
               </Select>
             </FormControl>
             <FormControl size="small" sx={{ minWidth: 150 }}>

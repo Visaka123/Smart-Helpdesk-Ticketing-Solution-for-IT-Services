@@ -55,8 +55,8 @@ export const availabilityApi = {
     apiClient.get<AssignmentLogEntry[]>(`/availability/assignment-log/${ticketId}`),
 
   // Manual override / reassign
-  override: (ticketId: number, newAgentName: string, overrideBy: string) =>
-    apiClient.post(`/availability/override/${ticketId}`, { new_agent_name: newAgentName, override_by: overrideBy }),
+  override: (ticketId: number, newAgentName: string, overrideBy: string, reason?: string) =>
+    apiClient.post(`/availability/override/${ticketId}`, { new_agent_name: newAgentName, override_by: overrideBy, reason }),
 
   // Reroute count for leave confirmation
   getRerouteCount: (leaveId: number) =>

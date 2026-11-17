@@ -84,6 +84,7 @@ class HolidayCreate(BaseModel):
 class ManualOverrideRequest(BaseModel):
     new_agent_name: str
     override_by:    str      # team lead name
+    reason:         Optional[str] = None
 
 class DemoSeedRequest(BaseModel):
     reset: bool = False
@@ -808,8 +809,9 @@ def manual_override(ticket_id: int, req: ManualOverrideRequest, request: Request
         old_name = ticket.assigned_agent_name
         ticket.assigned_agent_name = new_agent.name
 
+        user_reason = f" (Reason: {req.reason})" if req.reason else ""
         reason = (f"MANUAL OVERRIDE by {req.override_by}: "
-                  f"reassigned from '{old_name}' to '{new_agent.name}'")
+                  f"reassigned from '{old_name}' to '{new_agent.name}'{user_reason}")
 
         db.add(AssignmentLog(
             ticket_id           = ticket_id,

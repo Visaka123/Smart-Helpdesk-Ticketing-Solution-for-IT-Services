@@ -34,11 +34,15 @@ async def lifespan(app: FastAPI):
     try:
         from app.database.database import SessionLocal
         from app.availability.service import reassign_manager_fallback_tickets
+        from app.tickets.service import cleanup_existing_ticket_titles
         db_startup = SessionLocal()
         reassigned = reassign_manager_fallback_tickets(db_startup)
+        cleaned_titles = cleanup_existing_ticket_titles(db_startup)
         db_startup.close()
         if reassigned:
             print(f"[STARTUP] Reassigned {len(reassigned)} manager fallback tickets to available agents.")
+        if cleaned_titles:
+            print(f"[STARTUP] Cleaned {cleaned_titles} legacy ticket titles.")
     except Exception as e:
         print(f"[STARTUP WARN] Manager ticket reassignment on startup: {e}")
 
